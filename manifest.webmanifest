@@ -1,0 +1,18 @@
+{
+  "name": "Fistball Live — 2026 U18 WC & Women's EFA",
+  "short_name": "Fistball Live",
+  "description": "Live results, standings and fixtures for the 2026 U18 World Championship & Women's EFA Championship.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "lang": "en",
+  "categories": ["sports"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

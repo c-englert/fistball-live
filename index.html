@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Fistball Live — 2026 U18 WC & Women's EFA</title>
+  <meta name="description" content="Live results, standings and fixtures for the 2026 U18 World Championship & Women's EFA Championship." />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#0b1220" />
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Fistball Live" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">🤾</div>
+        <div class="brand-text">
+          <h1>Fistball Live</h1>
+          <p class="event-name">2026 U18 World Championship &amp; Women's EFA Championship</p>
+          <p class="event-sub">Reiden · Switzerland · 23–26 July 2026</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span id="liveDot" class="live-dot" title="Live"></span>
+        <span id="updated" class="updated">—</span>
+        <button id="refreshBtn" class="icon-btn" title="Refresh" aria-label="Refresh">⟳</button>
+        <button id="installBtn" class="install-btn" hidden>Install</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="category-bar" aria-label="Categories">
+    <div id="categoryPills" class="category-pills"></div>
+  </nav>
+
+  <main class="content">
+    <div class="view-tabs" role="tablist">
+      <button id="tabStandings" class="view-tab is-active" role="tab">Standings</button>
+      <button id="tabMatches" class="view-tab" role="tab">Matches</button>
+    </div>
+
+    <section id="banner" class="banner" hidden></section>
+
+    <section id="standingsView" class="view">
+      <div id="standings"></div>
+    </section>
+
+    <section id="matchesView" class="view" hidden>
+      <div class="match-filter" id="matchFilter"></div>
+      <div id="matches"></div>
+    </section>
+
+    <div id="loading" class="loading">Loading results…</div>
+  </main>
+
+  <footer class="app-footer">
+    <p>Data updates live from the official scoring sheet. Standings are computed from completed group-stage matches.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
