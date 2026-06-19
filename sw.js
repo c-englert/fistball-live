@@ -1,5 +1,5 @@
 /* Service worker: app-shell cache + network-first data. */
-const VERSION = "fb-live-v4";
+const VERSION = "fb-live-v6";
 const SHELL = [
   "./",
   "./index.html",
@@ -12,7 +12,13 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // Do NOT auto-skip — wait until the user taps "Update" (see message handler).
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)));
+});
+
+// The page asks the waiting worker to take over when the user taps Update.
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (e) => {

@@ -360,6 +360,45 @@ tr.qualified .pos { background: var(--accent); color: #fff; }
   opacity: 0.7;
 }
 
+/* Update available toast */
+.update-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 8px 8px 8px 18px;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  font-weight: 600;
+  max-width: calc(100vw - 24px);
+  animation: toast-in 0.3s ease;
+}
+.update-toast[hidden] { display: none; }
+.update-text { white-space: nowrap; }
+.update-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  flex: none;
+}
+.update-btn:active { transform: scale(0.95); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 14px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
 @media (min-width: 620px) {
   .brand-text h1 { font-size: 19px; }
   .event-name { font-size: 13px; }
