@@ -122,11 +122,10 @@ body {
 }
 .cat-row-label {
   flex: none;
-  width: 52px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  width: 16px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
   color: var(--muted);
 }
 .cat-row-pills {

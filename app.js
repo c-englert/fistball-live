@@ -221,9 +221,9 @@ function renderCategories() {
   const wrap = $("categoryPills");
   wrap.innerHTML = "";
   const groups = [
-    ["Women", state.categories.filter((c) => genderOf(c) === "women")],
-    ["Men", state.categories.filter((c) => genderOf(c) === "men")],
-    ["Other", state.categories.filter((c) => genderOf(c) === "other")],
+    ["W", state.categories.filter((c) => genderOf(c) === "women")],
+    ["M", state.categories.filter((c) => genderOf(c) === "men")],
+    ["·", state.categories.filter((c) => genderOf(c) === "other")],
   ];
   for (const [label, cats] of groups) {
     if (!cats.length) continue;
