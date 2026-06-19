@@ -220,24 +220,17 @@ const $ = (id) => document.getElementById(id);
 function renderCategories() {
   const wrap = $("categoryPills");
   wrap.innerHTML = "";
-  const groups = [
-    ["W", state.categories.filter((c) => genderOf(c) === "women")],
-    ["M", state.categories.filter((c) => genderOf(c) === "men")],
-    ["·", state.categories.filter((c) => genderOf(c) === "other")],
-  ];
-  for (const [label, cats] of groups) {
+  const groups = ["women", "men", "other"]
+    .map((g) => [g, state.categories.filter((c) => genderOf(c) === g)]);
+  for (const [g, cats] of groups) {
     if (!cats.length) continue;
     const row = document.createElement("div");
     row.className = "cat-row";
-    const lab = document.createElement("span");
-    lab.className = "cat-row-label";
-    lab.textContent = label;
-    row.appendChild(lab);
     const pills = document.createElement("div");
     pills.className = "cat-row-pills";
     for (const cat of cats) {
       const b = document.createElement("button");
-      b.className = "pill" + (cat === state.activeCategory ? " is-active" : "");
+      b.className = `pill pill--${g}` + (cat === state.activeCategory ? " is-active" : "");
       b.textContent = cat;
       b.onclick = () => { setCategory(cat); };
       pills.appendChild(b);

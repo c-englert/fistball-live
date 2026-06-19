@@ -7,6 +7,8 @@
   --muted: #93a2c0;
   --accent: #4f8cff;
   --accent-2: #22d3a6;
+  --men: #4f8cff;
+  --women: #ff5c93;
   --live: #ff4d6d;
   --gold: #f5c451;
   --win: #22d3a6;
@@ -117,16 +119,7 @@ body {
 .cat-row {
   display: flex;
   align-items: center;
-  gap: 10px;
   min-width: 0;
-}
-.cat-row-label {
-  flex: none;
-  width: 16px;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--muted);
 }
 .cat-row-pills {
   flex: 1;
@@ -150,12 +143,16 @@ body {
   cursor: pointer;
   transition: all 0.15s;
 }
-.pill:hover { color: var(--text); }
-.pill.is-active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
+.pill:hover { filter: brightness(1.2); }
+
+/* Gender colour-coding (pink = women, blue = men) */
+.pill--women { color: var(--women); border-color: rgba(255, 92, 147, 0.4); }
+.pill--men { color: var(--men); border-color: rgba(79, 140, 255, 0.4); }
+.pill--other { color: var(--text); }
+.pill.is-active { color: #fff; }
+.pill--women.is-active { background: var(--women); border-color: var(--women); }
+.pill--men.is-active { background: var(--men); border-color: var(--men); }
+.pill--other.is-active { background: var(--accent); border-color: var(--accent); }
 
 /* Content */
 .content { max-width: 980px; margin: 0 auto; padding: 16px; }
