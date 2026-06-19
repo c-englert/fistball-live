@@ -18,6 +18,24 @@ const DATA_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/
 const GROUP_ROUNDS = ["Qualification round", "WEC - Vorrunde"];
 const STATUS_VALUES = ["Not Started", "Starting", "In progress", "Finished"];
 
+// Category chips are grouped into two rows (Women, then Men) and ordered
+// within each row following this list (the order used in the sheet).
+const CATEGORY_ORDER = [
+  // Women
+  "WEC", "U18 W Gold", "U18 W Silver", "U18 Women", "P 7-9 Women",
+  // Men
+  "U18 M Gold", "U18 M Silver", "U18 Men", "P 7-9 Men",
+];
+function genderOf(cat) {
+  if (cat === "WEC" || /\b(w|women)\b/i.test(cat)) return "women";
+  if (/\b(m|men)\b/i.test(cat)) return "men";
+  return "other";
+}
+function orderIndex(cat) {
+  const i = CATEGORY_ORDER.indexOf(cat);
+  return i === -1 ? 999 : i;
+}
+
 // Map of country -> flag emoji (best effort; falls back to none).
 const FLAGS = {
   "Austria": "🇦🇹", "Brazil": "🇧🇷", "Germany": "🇩🇪", "Switzerland": "🇨🇭",
@@ -202,12 +220,30 @@ const $ = (id) => document.getElementById(id);
 function renderCategories() {
   const wrap = $("categoryPills");
   wrap.innerHTML = "";
-  for (const cat of state.categories) {
-    const b = document.createElement("button");
-    b.className = "pill" + (cat === state.activeCategory ? " is-active" : "");
-    b.textContent = cat;
-    b.onclick = () => { setCategory(cat); };
-    wrap.appendChild(b);
+  const groups = [
+    ["Women", state.categories.filter((c) => genderOf(c) === "women")],
+    ["Men", state.categories.filter((c) => genderOf(c) === "men")],
+    ["Other", state.categories.filter((c) => genderOf(c) === "other")],
+  ];
+  for (const [label, cats] of groups) {
+    if (!cats.length) continue;
+    const row = document.createElement("div");
+    row.className = "cat-row";
+    const lab = document.createElement("span");
+    lab.className = "cat-row-label";
+    lab.textContent = label;
+    row.appendChild(lab);
+    const pills = document.createElement("div");
+    pills.className = "cat-row-pills";
+    for (const cat of cats) {
+      const b = document.createElement("button");
+      b.className = "pill" + (cat === state.activeCategory ? " is-active" : "");
+      b.textContent = cat;
+      b.onclick = () => { setCategory(cat); };
+      pills.appendChild(b);
+    }
+    row.appendChild(pills);
+    wrap.appendChild(row);
   }
 }
 
@@ -394,8 +430,8 @@ function applyData(csvText) {
   const seen = new Set();
   const cats = [];
   for (const m of matches) if (!seen.has(m.category)) { seen.add(m.category); cats.push(m.category); }
-  // Sort: group-stage categories first, then the rest, alphabetic within.
-  cats.sort((a, b) => a.localeCompare(b));
+  // Order by the defined category order, unknowns last (alphabetical).
+  cats.sort((a, b) => orderIndex(a) - orderIndex(b) || a.localeCompare(b));
   state.categories = cats;
 
   if (!state.activeCategory || !cats.includes(state.activeCategory)) {

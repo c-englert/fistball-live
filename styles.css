@@ -110,12 +110,34 @@ body {
   max-width: 980px;
   margin: 0 auto;
   display: flex;
+  flex-direction: column;
   gap: 8px;
   padding: 10px 16px;
+}
+.cat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.cat-row-label {
+  flex: none;
+  width: 52px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+.cat-row-pills {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
 }
-.category-pills::-webkit-scrollbar { display: none; }
+.cat-row-pills::-webkit-scrollbar { display: none; }
 .pill {
   flex: none;
   background: var(--bg-elev);
