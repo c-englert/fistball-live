@@ -9,6 +9,7 @@
   --accent-2: #22d3a6;
   --men: #4f8cff;
   --women: #ff5c93;
+  --bronze: #d08a4e;
   --live: #ff4d6d;
   --gold: #f5c451;
   --win: #22d3a6;
@@ -466,7 +467,7 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
 }
 .bround-cards--final { justify-content: center; }
 .bround-cards--final > .bmatch { margin: 0; }
-.bronze-spacer { visibility: hidden; pointer-events: none; }
+.bronze-spacer, .gold-spacer { visibility: hidden; pointer-events: none; }
 
 /* Bracket connector lines */
 .bround:not(:last-child) .bslot::after {            /* horizontal line out of each match */
@@ -490,7 +491,7 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
 .bround:not(:last-child) .bslot:nth-child(odd)::before { top: 50%; }
 .bround:not(:last-child) .bslot:nth-child(even)::before { bottom: 50%; }
 .bround:not(:first-child) .bslot .bmatch::before,
-.bround:not(:first-child) .bround-cards--final > .bmatch::before { /* line into the next match */
+.bround:not(:first-child) .bround-cards--final .gold-block > .bmatch::before { /* line into the next match */
   content: "";
   position: absolute;
   right: 100%;
@@ -509,7 +510,8 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
   text-align: center;
   margin-bottom: 8px;
 }
-.bround-title.bronze-title { margin: 4px 0 8px; color: var(--gold); }
+.bround-title.bronze-title { margin: 4px 0 8px; color: var(--bronze); }
+.bround-title.gold-title { margin: 4px 0 8px; color: var(--gold); }
 .bmatch {
   position: relative;
   width: 100%;

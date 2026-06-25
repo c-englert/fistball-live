@@ -440,14 +440,18 @@ function renderKnockout(category) {
         // Final column: final centred (level with the SF midpoint), bronze just below.
         // An invisible clone of the bronze block above the final keeps it symmetric
         // (so the final stays centred) while everything stays in normal flow — no overflow.
+        const goldLabel = `<div class="bround-title gold-title">Gold</div>`;
         const bronzeInner = bronze.length
           ? `<div class="bround-title bronze-title">Bronze</div>${bronze.map(bracketNode).join("")}`
           : "";
+        // Stack is symmetric about the final match so it stays centred:
+        // [invisible bronze][Gold + final][Bronze + bronze][invisible Gold]
         html += `<div class="bround"><div class="bround-title">${title}</div>
           <div class="bround-cards bround-cards--final">
             ${bronzeInner ? `<div class="bronze-block bronze-spacer" aria-hidden="true">${bronzeInner}</div>` : ""}
-            ${items.map(bracketNode).join("")}
+            <div class="gold-block">${goldLabel}${items.map(bracketNode).join("")}</div>
             ${bronzeInner ? `<div class="bronze-block">${bronzeInner}</div>` : ""}
+            ${bronzeInner ? `<div class="gold-spacer" aria-hidden="true">${goldLabel}</div>` : ""}
           </div></div>`;
       } else {
         html += `<div class="bround"><div class="bround-title">${title}</div>
