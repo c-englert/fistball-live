@@ -445,7 +445,7 @@ function renderKnockout(category) {
           </div></div>`;
       } else {
         html += `<div class="bround"><div class="bround-title">${title}</div>
-          <div class="bround-cards">${items.map(bracketNode).join("")}</div></div>`;
+          <div class="bround-cards">${items.map((m) => `<div class="bslot">${bracketNode(m)}</div>`).join("")}</div></div>`;
       }
     }
     html += `</div>`;

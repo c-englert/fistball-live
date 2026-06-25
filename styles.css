@@ -439,7 +439,7 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
 .section-title.sub { margin-top: 18px; }
 .bracket {
   display: flex;
-  gap: 8px;
+  gap: 26px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding: 4px 2px 14px;
@@ -457,15 +457,52 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-around;
+}
+.bslot {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  position: relative;
 }
 .bround-cards--final { position: relative; justify-content: center; }
-.bround-cards--final .bmatch { margin-top: 0; margin-bottom: 0; }
+.bround-cards--final > .bmatch { margin: 0; }
 .bronze-block {
   position: absolute;
   left: 0; right: 0;
   top: 50%;
   margin-top: 34px;
+}
+
+/* Bracket connector lines */
+.bround:not(:last-child) .bslot::after {            /* horizontal line out of each match */
+  content: "";
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: 13px;
+  height: 2px;
+  background: var(--line);
+}
+.bround:not(:last-child) .bslot::before {           /* vertical line merging each pair */
+  content: "";
+  position: absolute;
+  left: 100%;
+  margin-left: 13px;
+  width: 2px;
+  height: 50%;
+  background: var(--line);
+}
+.bround:not(:last-child) .bslot:nth-child(odd)::before { top: 50%; }
+.bround:not(:last-child) .bslot:nth-child(even)::before { bottom: 50%; }
+.bround:not(:first-child) .bslot .bmatch::before,
+.bround:not(:first-child) .bround-cards--final > .bmatch::before { /* line into the next match */
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: 13px;
+  height: 2px;
+  background: var(--line);
 }
 .bround-title {
   flex: none;
@@ -480,11 +517,12 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
 .bround-title.bronze-title { margin: 4px 0 8px; color: var(--gold); }
 .bmatch {
   position: relative;
+  width: 100%;
   background: var(--bg-elev);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 6px 9px;
-  margin: 5px 6px;
+  margin: 6px 0;
   min-height: 48px;
   box-sizing: border-box;
   font-size: 12px;
@@ -492,15 +530,6 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
 }
 .bmatch.empty { opacity: 0.4; text-align: center; padding: 14px 9px; }
 .bmatch.live { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
-.bround:not(:last-child) .bmatch:not(.empty)::after {
-  content: "";
-  position: absolute;
-  right: -9px;
-  top: 50%;
-  width: 9px;
-  height: 2px;
-  background: var(--line);
-}
 .bteam {
   display: flex;
   justify-content: space-between;
