@@ -459,7 +459,14 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
   flex-direction: column;
   justify-content: space-around;
 }
-.bround-cards--center { justify-content: center; gap: 14px; }
+.bround-cards--final { position: relative; justify-content: center; }
+.bround-cards--final .bmatch { margin-top: 0; margin-bottom: 0; }
+.bronze-block {
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%;
+  margin-top: 34px;
+}
 .bround-title {
   flex: none;
   font-size: 10px;

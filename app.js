@@ -437,11 +437,11 @@ function renderKnockout(category) {
     html += `<div class="bracket">`;
     for (const [title, items, bronze] of cols) {
       if (bronze !== undefined) {
-        // Final column: centred apex with the bronze match below it.
+        // Final column: final centred (level with the SF midpoint), bronze just below it.
         html += `<div class="bround"><div class="bround-title">${title}</div>
-          <div class="bround-cards bround-cards--center">
+          <div class="bround-cards bround-cards--final">
             ${items.map(bracketNode).join("")}
-            ${bronze.length ? `<div class="bround-title bronze-title">Bronze</div>${bronze.map(bracketNode).join("")}` : ""}
+            ${bronze.length ? `<div class="bronze-block"><div class="bround-title bronze-title">Bronze</div>${bronze.map(bracketNode).join("")}</div>` : ""}
           </div></div>`;
       } else {
         html += `<div class="bround"><div class="bround-title">${title}</div>
