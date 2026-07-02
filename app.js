@@ -14,9 +14,8 @@ const CONFIG = {
 // gviz CSV endpoint — works for any sheet shared as "anyone with the link can view".
 const DATA_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&gid=${CONFIG.gid}&_=`;
 // The Config tab is read by NAME, so the same app works for any event's sheet.
+// It drives both the scoring rules AND the disciplinary "Cautions DB" section.
 const CONFIG_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&sheet=Config&_=`;
-// Disciplinary records (yellow / yellow-red / red cards) per player.
-const CAUTIONS_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&sheet=Cautions&_=`;
 
 // Rounds that form a round-robin group stage (used to compute standings).
 const GROUP_ROUNDS = ["Qualification round", "WEC - Vorrunde"];
@@ -701,11 +700,22 @@ function renderBracket() {
 
 /* ---------------------- Cards (cautions) ---------------------- */
 
-// Parse the Cautions tab. Primary source = the raw event list (one row per
-// caution, with the game and type); falls back to the aggregated summary.
+// Parse the master "Cautions DB" (a section of the Config tab). We anchor on
+// the "Cautions" (type) header; the DB columns are contiguous:
+//   Nr | Name | First Name | Cautions | Game | Team
 function parseCautions(csvText) {
   let rows;
   try { rows = parseCSV(csvText); } catch (_) { return []; }
+  const up = (s) => String(s || "").trim().toUpperCase();
+
+  let hdr = -1, cType = -1;
+  for (let r = 0; r < rows.length && hdr < 0; r++) {
+    const i = rows[r].findIndex((c) => up(c) === "CAUTIONS" || up(c) === "CAUTION");
+    if (i >= 3) { hdr = r; cType = i; }   // need room for Nr/Name/First to the left
+  }
+  if (hdr < 0) return [];
+  const cNr = cType - 3, cName = cType - 2, cFirst = cType - 1, cGame = cType + 1, cTeam = cType + 2;
+
   const players = new Map();
   const ensure = (team, nr, name, first) => {
     const key = `${team}|${nr}|${name}|${first}`;
@@ -720,25 +730,14 @@ function parseCautions(csvText) {
     return players.get(key);
   };
   const TYPES = ["Y", "YR", "R"];
-  // Raw events: cols K–P → Team(10), Nr(11), Name(12), First(13), Game(14), Caution(15)
-  for (const r of rows) {
-    const team = (r[10] || "").trim();
-    const c = (r[15] || "").trim().toUpperCase();
-    if (!team || !TYPES.includes(c)) continue;
-    const p = ensure(team, (r[11] || "").trim(), (r[12] || "").trim(), (r[13] || "").trim());
-    p[c.toLowerCase()]++;
-    p.events.push({ game: (r[14] || "").trim(), type: c });
-  }
-  // Fallback: aggregated summary cols A–I (Team1, Nr2, Name3, First4, Y5, YR6, R7)
-  if (players.size === 0) {
-    for (const r of rows) {
-      const team = (r[1] || "").trim();
-      if (!team || team === "#N/A") continue;
-      const y = num(r[5]), yr = num(r[6]), rr = num(r[7]);
-      if (y + yr + rr === 0) continue;
-      const p = ensure(team, (r[2] || "").trim(), (r[3] || "").trim(), (r[4] || "").trim());
-      p.y = y; p.yr = yr; p.r = rr;
-    }
+  for (let r = hdr + 1; r < rows.length; r++) {
+    const row = rows[r];
+    const team = (row[cTeam] || "").trim();
+    const type = up(row[cType]);
+    if (!team || !TYPES.includes(type)) continue;
+    const p = ensure(team, (row[cNr] || "").trim(), (row[cName] || "").trim(), (row[cFirst] || "").trim());
+    p[type.toLowerCase()]++;
+    p.events.push({ game: (row[cGame] || "").trim(), type });
   }
   return [...players.values()];
 }
@@ -870,28 +869,24 @@ async function load(showSpin) {
   const btn = $("refreshBtn");
   if (showSpin) btn.classList.add("spin");
   try {
-    const [resR, cfgR, cauR] = await Promise.allSettled([
+    const [resR, cfgR] = await Promise.allSettled([
       fetch(DATA_URL + Date.now(), { cache: "no-store" }),
       fetch(CONFIG_URL + Date.now(), { cache: "no-store" }),
-      fetch(CAUTIONS_URL + Date.now(), { cache: "no-store" }),
     ]);
-    // Config is optional — fall back to defaults / cache if it fails.
+    // Config is optional — it drives both the rules and the cautions DB.
     if (cfgR.status === "fulfilled" && cfgR.value.ok) {
       const cfgText = await cfgR.value.text();
       state.rules = parseRules(cfgText);
+      state.cautions = parseCautions(cfgText);
       try { localStorage.setItem("fb_rules", cfgText); } catch (_) {}
-    } else if (!state.rules) {
+    } else {
       const cachedCfg = localStorage.getItem("fb_rules");
-      state.rules = cachedCfg ? parseRules(cachedCfg) : DEFAULT_RULES;
-    }
-    // Cautions are optional too.
-    if (cauR.status === "fulfilled" && cauR.value.ok) {
-      const cauText = await cauR.value.text();
-      state.cautions = parseCautions(cauText);
-      try { localStorage.setItem("fb_cautions", cauText); } catch (_) {}
-    } else if (!state.cautions.length) {
-      const cachedCau = localStorage.getItem("fb_cautions");
-      if (cachedCau) state.cautions = parseCautions(cachedCau);
+      if (cachedCfg) {
+        if (!state.rules) state.rules = parseRules(cachedCfg);
+        if (!state.cautions.length) state.cautions = parseCautions(cachedCfg);
+      } else if (!state.rules) {
+        state.rules = DEFAULT_RULES;
+      }
     }
     if (resR.status !== "fulfilled" || !resR.value.ok) throw new Error("results fetch failed");
     const text = await resR.value.text();
