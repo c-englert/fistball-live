@@ -17,8 +17,11 @@ const DATA_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/
 // It drives both the scoring rules AND the disciplinary "Cautions DB" section.
 const CONFIG_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&sheet=Config&_=`;
 
-// Rounds that form a round-robin group stage (used to compute standings).
+// Rounds that form a round-robin group stage (used for the Bracket exclusion).
 const GROUP_ROUNDS = ["Qualification round", "WEC - Vorrunde"];
+// Rounds that get a computed standings table. Includes the P 7-9 placement
+// round-robin, which still stays listed in the Bracket.
+const TABLE_ROUNDS = [...GROUP_ROUNDS, "Placement 7-9"];
 const STATUS_VALUES = ["Not Started", "Starting", "In progress", "Finished"];
 
 // Scoring & tie-break rules — defaults follow the official IFA rule (art. 11):
@@ -269,7 +272,7 @@ function breakTies(teams, chain, games) {
 function computeStandings(category) {
   const allGames = state.matches.filter(
     (m) => m.category === category &&
-      GROUP_ROUNDS.includes(m.round) &&
+      TABLE_ROUNDS.includes(m.round) &&
       isRealTeam(m.teamA) && isRealTeam(m.teamB)
   );
   if (!allGames.length) return null;
@@ -349,9 +352,10 @@ function renderStandings() {
   if (rows) {
     const anyPlayed = rows.some((r) => r.played > 0);
     const showDraws = rows.some((r) => r.draws > 0);
-    const qualifyCount = Math.min(2, rows.length); // highlight top 2
+    const isPlacement = /7-9|7–9/.test(state.activeCategory);
+    const qualifyCount = isPlacement ? 0 : Math.min(2, rows.length); // highlight top 2 (not for placement)
 
-    html += `<p class="section-title">${esc(state.activeCategory)} · Group standings</p>`;
+    html += `<p class="section-title">${esc(state.activeCategory)} · ${isPlacement ? "Places 7–9 ranking" : "Group standings"}</p>`;
     html += `<div class="table-wrap"><table class="standings">
       <thead><tr>
         <th>#</th><th class="team">Team</th><th>M</th><th>W</th>${showDraws ? "<th>D</th>" : ""}<th>L</th>
@@ -408,7 +412,7 @@ const codeFor = (t) => CODES[t] || t.slice(0, 3).toUpperCase();
 function groupTeams(category) {
   const set = new Set();
   for (const m of state.matches) {
-    if (m.category === category && GROUP_ROUNDS.includes(m.round) &&
+    if (m.category === category && TABLE_ROUNDS.includes(m.round) &&
         isRealTeam(m.teamA) && isRealTeam(m.teamB)) {
       set.add(m.teamA); set.add(m.teamB);
     }
@@ -419,7 +423,7 @@ function groupTeams(category) {
 // The head-to-head match between two teams in a category's group stage.
 function headToHead(category, t1, t2) {
   return state.matches.find((m) =>
-    m.category === category && GROUP_ROUNDS.includes(m.round) &&
+    m.category === category && TABLE_ROUNDS.includes(m.round) &&
     ((m.teamA === t1 && m.teamB === t2) || (m.teamA === t2 && m.teamB === t1)));
 }
 
