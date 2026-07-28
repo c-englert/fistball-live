@@ -79,10 +79,11 @@
   <script src="app.js"></script>
 
   <!-- Live scoreboard from Fistball Arena (Firestore, public read).
-       Overlays the sheet by match number; harmless if unreachable. -->
+       Reads the public `public/live` pointer to know WHICH event to show, then
+       subscribes that event's results. Overlays the sheet by match number. -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, onSnapshot }
+    import { getFirestore, collection, doc, onSnapshot }
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     try {
       const app = initializeApp({
@@ -92,11 +93,21 @@
         appId: "1:261226374717:web:d267cc2b02175e85bf2c54",
       });
       const db = getFirestore(app);
-      onSnapshot(
-        collection(db, "results"),
-        (snap) => window.applyFsResults && window.applyFsResults(snap.docs.map((d) => d.data())),
-        (err) => console.warn("Firestore results unavailable:", err)
-      );
+      let resultsUnsub = null;
+      // Follow the admin-selected event; re-subscribe when it changes.
+      onSnapshot(doc(db, "public", "live"), (snap) => {
+        const eid = snap.exists() ? snap.data().eventId : null;
+        if (resultsUnsub) { resultsUnsub(); resultsUnsub = null; }
+        if (eid) {
+          resultsUnsub = onSnapshot(
+            collection(db, "events", eid, "results"),
+            (rs) => window.applyFsResults && window.applyFsResults(rs.docs.map((d) => d.data())),
+            (err) => console.warn("Firestore results unavailable:", err)
+          );
+        } else {
+          window.applyFsResults && window.applyFsResults([]); // no live event set
+        }
+      }, (err) => console.warn("Live pointer unavailable:", err));
     } catch (e) {
       console.warn("Firestore init skipped:", e);
     }
