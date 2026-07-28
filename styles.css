@@ -623,3 +623,8 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
   .brand-text h1 { font-size: 19px; }
   .event-name { font-size: 13px; }
 }
+
+/* Event/promoter logos in the header (from Fistball Arena branding) */
+.event-logos { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.event-logos img { height: 38px; max-width: 96px; object-fit: contain; background: #fff; border-radius: 6px; padding: 3px; }
+@media (max-width: 640px) { .event-logos img { height: 30px; max-width: 64px; } }
