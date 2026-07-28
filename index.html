@@ -77,5 +77,29 @@
 
 
   <script src="app.js"></script>
+
+  <!-- Live scoreboard from Fistball Arena (Firestore, public read).
+       Overlays the sheet by match number; harmless if unreachable. -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, onSnapshot }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    try {
+      const app = initializeApp({
+        apiKey: "AIzaSyAca__YTy_Y6tlX62jJ6aK_qHhJgUD4V0w",
+        authDomain: "fistball-arena.firebaseapp.com",
+        projectId: "fistball-arena",
+        appId: "1:261226374717:web:d267cc2b02175e85bf2c54",
+      });
+      const db = getFirestore(app);
+      onSnapshot(
+        collection(db, "results"),
+        (snap) => window.applyFsResults && window.applyFsResults(snap.docs.map((d) => d.data())),
+        (err) => console.warn("Firestore results unavailable:", err)
+      );
+    } catch (e) {
+      console.warn("Firestore init skipped:", e);
+    }
+  </script>
 </body>
 </html>

@@ -62,6 +62,8 @@ const FLAGS = {
 
 const state = {
   matches: [],
+  sheetMatches: [],   // parsed from the Google Sheet
+  fsResults: {},       // live scoreboard from Firestore (Fistball Arena), keyed by nr
   categories: [],
   activeCategory: localStorage.getItem("fb_category") || null,
   activeView: localStorage.getItem("fb_view") || "standings",
@@ -911,6 +913,45 @@ async function load(showSpin) {
 function applyData(csvText) {
   const rows = parseCSV(csvText);
   const matches = rows.map(rowToMatch).filter(Boolean);
+  if (!matches.length) return;
+  state.sheetMatches = matches;
+  remerge();
+}
+
+// Build one match object from a Firestore `results` doc (Fistball Arena).
+function fsRowToMatch(d) {
+  if (!d || !d.nr || !d.teamA || !d.teamB || !d.category) return null;
+  return {
+    day: d.date || "", time: d.time || "", nr: num(d.nr), court: d.court || "",
+    teamARaw: d.teamA, teamBRaw: d.teamB,
+    teamA: cleanTeam(d.teamA, d.category), teamB: cleanTeam(d.teamB, d.category),
+    round: d.round || "", category: d.category, bestOf: num(d.bestOf),
+    setsA: num(d.setsA), setsB: num(d.setsB),
+    pointsA: num(d.pointsA), pointsB: num(d.pointsB),
+    sets: Array.isArray(d.sets) ? d.sets.map((p) => [num(p[0]), num(p[1])]) : [],
+    status: d.status || "Not Started",
+  };
+}
+
+// Called by the Firestore subscription (see index.html) with the live list.
+window.applyFsResults = function (list) {
+  const map = {};
+  for (const d of list || []) {
+    const m = fsRowToMatch(d);
+    if (m) map[m.nr] = m;
+  }
+  state.fsResults = map;
+  remerge();
+};
+
+// Merge the sheet matches with the live Firestore results (Firestore wins per
+// match number), then recompute categories and re-render. Keeps sheet order,
+// with any Firestore-only matches appended.
+function remerge() {
+  const byNr = new Map();
+  for (const m of state.sheetMatches) byNr.set(m.nr, m);
+  for (const nr in state.fsResults) byNr.set(Number(nr), state.fsResults[nr]);
+  const matches = [...byNr.values()];
   if (!matches.length) return;
   state.matches = matches;
 
