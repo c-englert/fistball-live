@@ -113,7 +113,9 @@
 
       // Follow the admin-selected event; re-subscribe results + branding on change.
       onSnapshot(doc(db, "public", "live"), (snap) => {
-        const eid = snap.exists() ? snap.data().eventId : null;
+        const data = snap.exists() ? snap.data() : null;
+        const eid = data ? data.eventId : null;
+        if (window.applyLivePointer) window.applyLivePointer(data); // {eventId,name,startsAt,...} or null
         if (resultsUnsub) { resultsUnsub(); resultsUnsub = null; }
         if (brandUnsub) { brandUnsub(); brandUnsub = null; }
         if (eid) {

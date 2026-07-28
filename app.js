@@ -915,6 +915,8 @@ function applyData(csvText) {
   const matches = rows.map(rowToMatch).filter(Boolean);
   if (!matches.length) return;
   state.sheetMatches = matches;
+  // While a live event is set, the DB is the source — don't let the sheet render.
+  if (state.livePointer) return;
   remerge();
 }
 
@@ -944,14 +946,34 @@ window.applyFsResults = function (list) {
   remerge();
 };
 
+// The live-event pointer from Fistball Arena ({eventId,name,startsAt,...} or null).
+// When set, the Live is in "event mode" (uses the DB, shows a countdown) even
+// before any games exist.
+window.applyLivePointer = function (p) {
+  state.livePointer = p || null;
+  if (p && p.name) { const n = document.querySelector(".event-name"); if (n) n.textContent = p.name; }
+  remerge();
+};
+
+function eventStartMs() {
+  const p = state.livePointer;
+  if (p && p.startsAt) {
+    const m = /(\d{4})-(\d{2})-(\d{2})/.exec(p.startsAt);
+    if (m) return new Date(+m[1], +m[2] - 1, +m[3], 0, 0, 0).getTime();
+  }
+  const starts = state.matches.map(matchStartMs).filter((t) => t != null);
+  return starts.length ? Math.min(...starts) : null;
+}
+
 // Merge the sheet matches with the live Firestore results (Firestore wins per
 // match number), then recompute categories and re-render. Keeps sheet order,
 // with any Firestore-only matches appended.
 function remerge() {
-  // Event-driven: when the published Arena event provides results, the database
-  // IS the source (full fixture + live scores). Otherwise fall back to the sheet.
+  // Event mode: when Arena set a live event, the database is the source (full
+  // fixture + live scores + countdown), even before any games exist. Otherwise
+  // fall back to the sheet.
   const fsList = Object.values(state.fsResults);
-  state.eventDriven = fsList.length > 0;
+  state.eventDriven = !!state.livePointer || fsList.length > 0;
 
   let matches;
   if (state.eventDriven) {
@@ -963,8 +985,20 @@ function remerge() {
     for (const m of state.sheetMatches) byNr.set(m.nr, m);
     matches = [...byNr.values()];
   }
-  if (!matches.length) return;
+  // In event mode we render even with no games yet (countdown / empty state).
+  if (!state.eventDriven && !matches.length) return;
   state.matches = matches;
+
+  // Event set but no fixture yet → clear the views and show only the countdown.
+  if (!matches.length) {
+    state.categories = [];
+    renderCategories();
+    ["standings", "bracket", "matches", "cards"].forEach((id) => { const e = $(id); if (e) e.innerHTML = ""; });
+    $("loading").hidden = true;
+    $("updated").textContent = "Not started";
+    updateCountdown();
+    return;
+  }
 
   // Distinct categories in sheet order.
   const seen = new Set();
@@ -1000,8 +1034,7 @@ function updateCountdown() {
   const el = $("countdown");
   if (!el) return;
   if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; } // reset any prior clock
-  const starts = state.matches.map(matchStartMs).filter((t) => t != null);
-  const first = starts.length ? Math.min(...starts) : null;
+  const first = eventStartMs(); // event start date if set, else earliest game
   if (!(state.eventDriven && first && Date.now() < first)) { el.hidden = true; return; }
   const tick = () => {
     const diff = first - Date.now();
