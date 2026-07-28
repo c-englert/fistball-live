@@ -628,3 +628,8 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
 .event-logos { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .event-logos img { height: 38px; max-width: 96px; object-fit: contain; background: #fff; border-radius: 6px; padding: 3px; }
 @media (max-width: 640px) { .event-logos img { height: 30px; max-width: 64px; } }
+
+/* Countdown before the event starts (event-driven Live) */
+.countdown { display: flex; flex-direction: column; align-items: center; gap: 6px; background: linear-gradient(135deg, #14224a, #26346a); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; margin: 12px 0; text-align: center; }
+.countdown .cd-label { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #9fb0d6; font-weight: 700; }
+.countdown .cd-clock { font-size: clamp(26px, 6vw, 44px); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 1px; }

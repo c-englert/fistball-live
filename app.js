@@ -948,10 +948,21 @@ window.applyFsResults = function (list) {
 // match number), then recompute categories and re-render. Keeps sheet order,
 // with any Firestore-only matches appended.
 function remerge() {
-  const byNr = new Map();
-  for (const m of state.sheetMatches) byNr.set(m.nr, m);
-  for (const nr in state.fsResults) byNr.set(Number(nr), state.fsResults[nr]);
-  const matches = [...byNr.values()];
+  // Event-driven: when the published Arena event provides results, the database
+  // IS the source (full fixture + live scores). Otherwise fall back to the sheet.
+  const fsList = Object.values(state.fsResults);
+  state.eventDriven = fsList.length > 0;
+
+  let matches;
+  if (state.eventDriven) {
+    matches = fsList;
+    state.rules = DEFAULT_RULES;   // events use the default IFA ranking rules
+    state.cautions = [];            // sheet cautions don't apply to a DB event
+  } else {
+    const byNr = new Map();
+    for (const m of state.sheetMatches) byNr.set(m.nr, m);
+    matches = [...byNr.values()];
+  }
   if (!matches.length) return;
   state.matches = matches;
 
@@ -974,6 +985,40 @@ function remerge() {
 
   renderCategories();
   renderActiveView();
+  updateCountdown();
+}
+
+/* ---------------------- Countdown (event not started yet) ---------------------- */
+function matchStartMs(m) {
+  const [dd, mm, yy] = String(m.day || "").split("/").map(Number);
+  if (!dd) return null;
+  const [h, mi] = String(m.time || "0:0").split(":").map(Number);
+  return new Date(2000 + (yy || 0), (mm || 1) - 1, dd, h || 0, mi || 0).getTime();
+}
+let countdownTimer = null;
+function updateCountdown() {
+  const el = $("countdown");
+  if (!el) return;
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; } // reset any prior clock
+  const starts = state.matches.map(matchStartMs).filter((t) => t != null);
+  const first = starts.length ? Math.min(...starts) : null;
+  if (!(state.eventDriven && first && Date.now() < first)) { el.hidden = true; return; }
+  const tick = () => {
+    const diff = first - Date.now();
+    if (diff <= 0) {
+      el.hidden = true;
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+      renderActiveView();
+      return;
+    }
+    const s = Math.floor(diff / 1000);
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    el.innerHTML = `<span class="cd-label">Event starts in</span>` +
+      `<span class="cd-clock">${d}d ${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(sec).padStart(2, "0")}s</span>`;
+  };
+  el.hidden = false;
+  tick();
+  countdownTimer = setInterval(tick, 1000);
 }
 
 function cacheData(text) {
