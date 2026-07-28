@@ -955,12 +955,33 @@ window.applyLivePointer = function (p) {
   remerge();
 };
 
-function eventStartMs() {
-  const p = state.livePointer;
-  if (p && p.startsAt) {
-    const m = /(\d{4})-(\d{2})-(\d{2})/.exec(p.startsAt);
-    if (m) return new Date(+m[1], +m[2] - 1, +m[3], 0, 0, 0).getTime();
+// Public event info from Arena: name, place, dates, startsAt, logos.
+window.applyEventInfo = function (b) {
+  state.eventInfo = b || null;
+  if (b) {
+    const nameEl = document.querySelector(".event-name");
+    const subEl = document.querySelector(".event-sub");
+    if (nameEl && b.name) nameEl.textContent = b.name;
+    if (subEl) { const s = [b.place, b.dates].filter(Boolean).join(" · "); if (s) subEl.textContent = s; }
+    const logosEl = document.getElementById("eventLogos");
+    if (logosEl) {
+      const urls = [];
+      if (b.eventLogo && b.eventLogo.dataUrl) urls.push(b.eventLogo.dataUrl);
+      for (const p of b.promoters || []) if (p && p.dataUrl) urls.push(p.dataUrl);
+      logosEl.innerHTML = urls.map((u) => '<img src="' + u + '" alt="" />').join("");
+    }
   }
+  updateCountdown();
+};
+
+function isoToMs(iso) {
+  const m = /(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], 0, 0, 0).getTime() : null;
+}
+function eventStartMs() {
+  const iso = (state.eventInfo && state.eventInfo.startsAt) || (state.livePointer && state.livePointer.startsAt);
+  const fromInfo = isoToMs(iso);
+  if (fromInfo) return fromInfo;
   const starts = state.matches.map(matchStartMs).filter((t) => t != null);
   return starts.length ? Math.min(...starts) : null;
 }

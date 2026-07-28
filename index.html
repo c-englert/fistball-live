@@ -95,43 +95,30 @@
         appId: "1:261226374717:web:d267cc2b02175e85bf2c54",
       });
       const db = getFirestore(app);
-      let resultsUnsub = null, brandUnsub = null;
+      let resultsUnsub = null, infoUnsub = null;
 
-      function applyBranding(b) {
-        const el = document.getElementById("eventLogos");
-        if (el) {
-          const urls = [];
-          if (b && b.eventLogo && b.eventLogo.dataUrl) urls.push(b.eventLogo.dataUrl);
-          for (const p of (b && b.promoters) || []) if (p && p.dataUrl) urls.push(p.dataUrl);
-          el.innerHTML = urls.map((u) => '<img src="' + u + '" alt="" />').join("");
-        }
-        if (b && b.name) {
-          const n = document.querySelector(".event-name");
-          if (n) n.textContent = b.name;
-        }
-      }
-
-      // Follow the admin-selected event; re-subscribe results + branding on change.
+      // Follow the admin-selected event; re-subscribe results + info on change.
       onSnapshot(doc(db, "public", "live"), (snap) => {
         const data = snap.exists() ? snap.data() : null;
         const eid = data ? data.eventId : null;
-        if (window.applyLivePointer) window.applyLivePointer(data); // {eventId,name,startsAt,...} or null
+        if (window.applyLivePointer) window.applyLivePointer(data); // {eventId,...} or null
         if (resultsUnsub) { resultsUnsub(); resultsUnsub = null; }
-        if (brandUnsub) { brandUnsub(); brandUnsub = null; }
+        if (infoUnsub) { infoUnsub(); infoUnsub = null; }
         if (eid) {
           resultsUnsub = onSnapshot(
             collection(db, "events", eid, "results"),
             (rs) => window.applyFsResults && window.applyFsResults(rs.docs.map((d) => d.data())),
             (err) => console.warn("Firestore results unavailable:", err)
           );
-          brandUnsub = onSnapshot(
+          // Public event info: name, place, dates, startsAt, logos.
+          infoUnsub = onSnapshot(
             doc(db, "public", "event_" + eid),
-            (b) => applyBranding(b.exists() ? b.data() : null),
-            (err) => console.warn("Branding unavailable:", err)
+            (b) => window.applyEventInfo && window.applyEventInfo(b.exists() ? b.data() : null),
+            (err) => console.warn("Event info unavailable:", err)
           );
         } else {
           window.applyFsResults && window.applyFsResults([]);
-          applyBranding(null);
+          window.applyEventInfo && window.applyEventInfo(null);
         }
       }, (err) => console.warn("Live pointer unavailable:", err));
     } catch (e) {
