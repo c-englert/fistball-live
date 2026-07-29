@@ -972,7 +972,7 @@ function fsRowToMatch(d) {
     round: d.round || "", category: d.category, bestOf: num(d.bestOf),
     setsA: num(d.setsA), setsB: num(d.setsB),
     pointsA: num(d.pointsA), pointsB: num(d.pointsB),
-    sets: Array.isArray(d.sets) ? d.sets.map((p) => [num(p[0]), num(p[1])]) : [],
+    sets: Array.isArray(d.sets) ? d.sets.map((p) => Array.isArray(p) ? [num(p[0]), num(p[1])] : [num(p.a), num(p.b)]) : [],
     status: d.status || "Not Started",
     cards: Array.isArray(d.cards) ? d.cards : [],
   };
