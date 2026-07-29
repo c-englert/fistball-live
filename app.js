@@ -748,6 +748,48 @@ function parseCautions(csvText) {
   return [...players.values()];
 }
 
+// Event mode: cards come from the database, not the sheet. Two sources:
+//  - each Firestore result carries a `cards` array (live scoring in Arena),
+//  - the public event doc carries a `cautions` array (imported past events).
+// Both fold into the same per-player shape the Cards tab renders.
+function cautionKey(team, nr, name, first) { return `${team}|${nr}|${name}|${first}`; }
+function ensureCautionPlayer(map, team, nr, name, first, category) {
+  const key = cautionKey(team, nr, name, first);
+  if (!map.has(key)) {
+    const i = team.indexOf(" - ");
+    map.set(key, {
+      team, teamName: i >= 0 ? team.slice(0, i) : team,
+      category: category || (i >= 0 ? team.slice(i + 3) : ""),
+      nr, name, first, y: 0, yr: 0, r: 0, events: [],
+    });
+  }
+  return map.get(key);
+}
+function buildCautions(fsList, imported) {
+  const map = new Map();
+  // From live results.
+  for (const d of fsList || []) {
+    const game = String(d.nr || "");
+    for (const c of d.cards || []) {
+      const team = (c.team || "").trim();
+      if (!team) continue;
+      const p = ensureCautionPlayer(map, team, (c.nr || "").toString().trim(), (c.name || "").trim(), (c.first || "").trim(), c.category);
+      if (c.y) { p.y += c.y; p.events.push({ game, type: "Y" }); }
+      if (c.yr) { p.yr += c.yr; p.events.push({ game, type: "YR" }); }
+      if (c.r) { p.r += c.r; p.events.push({ game, type: "R" }); }
+    }
+  }
+  // From an imported event doc (already per-player aggregated).
+  for (const c of imported || []) {
+    const team = (c.team || "").trim();
+    if (!team) continue;
+    const p = ensureCautionPlayer(map, team, (c.nr || "").toString().trim(), (c.name || "").trim(), (c.first || "").trim(), c.category);
+    p.y += c.y || 0; p.yr += c.yr || 0; p.r += c.r || 0;
+    for (const e of c.events || []) p.events.push(e);
+  }
+  return [...map.values()].filter((p) => p.y || p.yr || p.r);
+}
+
 function cautionBadge(kind, n) {
   if (!n) return "";
   const label = { y: "Y", yr: "YR", r: "R" }[kind];
@@ -932,6 +974,7 @@ function fsRowToMatch(d) {
     pointsA: num(d.pointsA), pointsB: num(d.pointsB),
     sets: Array.isArray(d.sets) ? d.sets.map((p) => [num(p[0]), num(p[1])]) : [],
     status: d.status || "Not Started",
+    cards: Array.isArray(d.cards) ? d.cards : [],
   };
 }
 
@@ -971,7 +1014,9 @@ window.applyEventInfo = function (b) {
       logosEl.innerHTML = urls.map((u) => '<img src="' + u + '" alt="" />').join("");
     }
   }
-  updateCountdown();
+  // Re-render so imported cautions (b.cautions) reach the Cards tab; remerge
+  // also refreshes the countdown from the new start date.
+  remerge();
 };
 
 function isoToMs(iso) {
@@ -1000,7 +1045,8 @@ function remerge() {
   if (state.eventDriven) {
     matches = fsList;
     state.rules = DEFAULT_RULES;   // events use the default IFA ranking rules
-    state.cautions = [];            // sheet cautions don't apply to a DB event
+    // Cards come from the DB: live result cards + any imported cautions.
+    state.cautions = buildCautions(fsList, state.eventInfo && state.eventInfo.cautions);
   } else {
     const byNr = new Map();
     for (const m of state.sheetMatches) byNr.set(m.nr, m);
