@@ -97,11 +97,8 @@
       const db = getFirestore(app);
       let resultsUnsub = null, infoUnsub = null;
 
-      // Follow the admin-selected event; re-subscribe results + info on change.
-      onSnapshot(doc(db, "public", "live"), (snap) => {
-        const data = snap.exists() ? snap.data() : null;
-        const eid = data ? data.eventId : null;
-        if (window.applyLivePointer) window.applyLivePointer(data); // {eventId,...} or null
+      // Show a specific event's results + info (used by both the pointer and ?event=).
+      function showEvent(eid) {
         if (resultsUnsub) { resultsUnsub(); resultsUnsub = null; }
         if (infoUnsub) { infoUnsub(); infoUnsub = null; }
         if (eid) {
@@ -110,7 +107,6 @@
             (rs) => window.applyFsResults && window.applyFsResults(rs.docs.map((d) => d.data())),
             (err) => console.warn("Firestore results unavailable:", err)
           );
-          // Public event info: name, place, dates, startsAt, logos.
           infoUnsub = onSnapshot(
             doc(db, "public", "event_" + eid),
             (b) => window.applyEventInfo && window.applyEventInfo(b.exists() ? b.data() : null),
@@ -120,7 +116,22 @@
           window.applyFsResults && window.applyFsResults([]);
           window.applyEventInfo && window.applyEventInfo(null);
         }
-      }, (err) => console.warn("Live pointer unavailable:", err));
+      }
+
+      // ?event=EID pins a specific event (for embedding in Arena); otherwise
+      // follow the admin-selected public pointer.
+      const forcedEid = new URLSearchParams(location.search).get("event");
+      if (forcedEid) {
+        document.body.classList.add("embedded");
+        if (window.applyLivePointer) window.applyLivePointer({ eventId: forcedEid });
+        showEvent(forcedEid);
+      } else {
+        onSnapshot(doc(db, "public", "live"), (snap) => {
+          const data = snap.exists() ? snap.data() : null;
+          if (window.applyLivePointer) window.applyLivePointer(data);
+          showEvent(data ? data.eventId : null);
+        }, (err) => console.warn("Live pointer unavailable:", err));
+      }
     } catch (e) {
       console.warn("Firestore init skipped:", e);
     }
