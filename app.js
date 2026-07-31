@@ -271,9 +271,22 @@ function breakTies(teams, chain, games) {
   return [...teams].sort((a, b) => a.localeCompare(b));        // fully tied → lots (stable)
 }
 
-function computeStandings(category) {
+// Distinct non-empty group labels (A/B/…) within a category's group stage.
+// Present when a schedule was generated with multiple groups; absent (empty)
+// for sheet-imported events, which keep a single category-wide table.
+function groupsInCategory(category) {
+  const set = new Set();
+  for (const m of state.matches) {
+    if (m.category === category && TABLE_ROUNDS.includes(m.round) && (m.group || "").trim())
+      set.add(m.group.trim());
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+function computeStandings(category, group = null) {
+  const inGroup = (m) => !group || (m.group || "").trim() === group;
   const allGames = state.matches.filter(
-    (m) => m.category === category &&
+    (m) => m.category === category && inGroup(m) &&
       TABLE_ROUNDS.includes(m.round) &&
       isRealTeam(m.teamA) && isRealTeam(m.teamB)
   );
@@ -346,47 +359,60 @@ function renderCategories() {
   }
 }
 
+// One standings table (+ its head-to-head grid) for a category, optionally
+// scoped to a single group. `title` is the heading suffix (e.g. "Group A").
+function standingsBlock(category, group, title) {
+  const rows = computeStandings(category, group);
+  if (!rows) return "";
+  const anyPlayed = rows.some((r) => r.played > 0);
+  const showDraws = rows.some((r) => r.draws > 0);
+  const isPlacement = /7-9|7–9/.test(category);
+  const qualifyCount = isPlacement ? 0 : Math.min(2, rows.length); // highlight top 2 (not for placement)
+
+  let html = `<p class="section-title">${esc(category)} · ${esc(title)}</p>`;
+  html += `<div class="table-wrap"><table class="standings">
+    <thead><tr>
+      <th>#</th><th class="team">Team</th><th>M</th><th>W</th>${showDraws ? "<th>D</th>" : ""}<th>L</th>
+      <th>Sets</th><th>±</th><th>Pts</th>
+    </tr></thead><tbody>`;
+  rows.forEach((r, i) => {
+    const setDiff = r.setsWon - r.setsLost;
+    const qualified = i < qualifyCount;
+    html += `<tr class="${qualified ? "qualified" : ""}">
+      <td><span class="pos">${i + 1}</span></td>
+      <td class="team"><span class="team-name"><span class="flag">${flagFor(r.team)}</span>${esc(r.team)}</span></td>
+      <td>${r.played}</td>
+      <td>${r.wins}</td>
+      ${showDraws ? `<td>${r.draws}</td>` : ""}
+      <td>${r.losses}</td>
+      <td class="dim">${r.setsWon}-${r.setsLost}</td>
+      <td class="${setDiff > 0 ? "" : "dim"}">${setDiff > 0 ? "+" : ""}${setDiff}</td>
+      <td class="pts-col">${r.pts}</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  if (!anyPlayed) {
+    html += `<div class="empty">No matches completed yet — standings will fill in as results come in.</div>`;
+  }
+  html += renderCrossTable(category, group);
+  return html;
+}
+
 function renderStandings() {
   const host = $("standings");
-  const rows = computeStandings(state.activeCategory);
+  const category = state.activeCategory;
+  const isPlacement = /7-9|7–9/.test(category);
+  const named = groupsInCategory(category); // ["A","B",…] when multi-group
   let html = "";
 
-  if (rows) {
-    const anyPlayed = rows.some((r) => r.played > 0);
-    const showDraws = rows.some((r) => r.draws > 0);
-    const isPlacement = /7-9|7–9/.test(state.activeCategory);
-    const qualifyCount = isPlacement ? 0 : Math.min(2, rows.length); // highlight top 2 (not for placement)
-
-    html += `<p class="section-title">${esc(state.activeCategory)} · ${isPlacement ? "Places 7–9 ranking" : "Group standings"}</p>`;
-    html += `<div class="table-wrap"><table class="standings">
-      <thead><tr>
-        <th>#</th><th class="team">Team</th><th>M</th><th>W</th>${showDraws ? "<th>D</th>" : ""}<th>L</th>
-        <th>Sets</th><th>±</th><th>Pts</th>
-      </tr></thead><tbody>`;
-    rows.forEach((r, i) => {
-      const setDiff = r.setsWon - r.setsLost;
-      const qualified = i < qualifyCount;
-      html += `<tr class="${qualified ? "qualified" : ""}">
-        <td><span class="pos">${i + 1}</span></td>
-        <td class="team"><span class="team-name"><span class="flag">${flagFor(r.team)}</span>${esc(r.team)}</span></td>
-        <td>${r.played}</td>
-        <td>${r.wins}</td>
-        ${showDraws ? `<td>${r.draws}</td>` : ""}
-        <td>${r.losses}</td>
-        <td class="dim">${r.setsWon}-${r.setsLost}</td>
-        <td class="${setDiff > 0 ? "" : "dim"}">${setDiff > 0 ? "+" : ""}${setDiff}</td>
-        <td class="pts-col">${r.pts}</td>
-      </tr>`;
-    });
-    html += `</tbody></table></div>`;
-    if (!anyPlayed) {
-      html += `<div class="empty">No matches completed yet — standings will fill in as results come in.</div>`;
-    }
-    html += renderCrossTable(state.activeCategory);
+  if (named.length) {
+    html = named.map((g) => standingsBlock(category, g, `Group ${g}`)).join("");
+  } else {
+    html = standingsBlock(category, null, isPlacement ? "Places 7–9 ranking" : "Group standings");
   }
 
   if (!html) {
-    const ko = knockoutMatches(state.activeCategory).length > 0;
+    const ko = knockoutMatches(category).length > 0;
     html = ko
       ? `<div class="empty">This category is a knock-out stage — no group table.<br>See the <b>Bracket</b> tab.</div>`
       : `<div class="empty">No data for this category yet — check the <b>Matches</b> tab.</div>`;
@@ -411,10 +437,11 @@ const CODES = {
 };
 const codeFor = (t) => CODES[t] || t.slice(0, 3).toUpperCase();
 
-function groupTeams(category) {
+function groupTeams(category, group = null) {
+  const inGroup = (m) => !group || (m.group || "").trim() === group;
   const set = new Set();
   for (const m of state.matches) {
-    if (m.category === category && TABLE_ROUNDS.includes(m.round) &&
+    if (m.category === category && inGroup(m) && TABLE_ROUNDS.includes(m.round) &&
         isRealTeam(m.teamA) && isRealTeam(m.teamB)) {
       set.add(m.teamA); set.add(m.teamB);
     }
@@ -430,8 +457,8 @@ function headToHead(category, t1, t2) {
 }
 
 // The cross / head-to-head grid (mirrors the spreadsheet's results matrix).
-function renderCrossTable(category) {
-  const teams = groupTeams(category);
+function renderCrossTable(category, group = null) {
+  const teams = groupTeams(category, group);
   if (teams.length < 2) return "";
   const mode = state.crossMode === "points" ? "points" : "sets";
 
@@ -969,7 +996,7 @@ function fsRowToMatch(d) {
     day: d.date || "", time: d.time || "", nr: num(d.nr), court: d.court || "",
     teamARaw: d.teamA, teamBRaw: d.teamB,
     teamA: cleanTeam(d.teamA, d.category), teamB: cleanTeam(d.teamB, d.category),
-    round: d.round || "", category: d.category, bestOf: num(d.bestOf),
+    round: d.round || "", category: d.category, group: (d.group || "").toString().trim(), bestOf: num(d.bestOf),
     setsA: num(d.setsA), setsB: num(d.setsB),
     pointsA: num(d.pointsA), pointsB: num(d.pointsB),
     sets: Array.isArray(d.sets) ? d.sets.map((p) => Array.isArray(p) ? [num(p[0]), num(p[1])] : [num(p.a), num(p.b)]) : [],
