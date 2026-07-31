@@ -119,13 +119,19 @@ function cleanTeam(name, category) {
   return n.trim();
 }
 
-// A team is a real entrant (not a bracket placeholder).
-// Placeholders are the *cleaned* names like "Gold 3rd", "Winner SF1", "WEC R4",
-// "5th Silver", "Loser L1" — all of which contain a digit or "winner"/"loser".
-// Real country names never do.
+// A team is a real entrant (not a bracket placeholder). Placeholders are seed
+// labels like "1st Group A", "Winner SF1", "Loser SF2", "Gold 3rd", "5th Silver".
+// We match those patterns specifically — a bare digit is NOT enough, because real
+// club teams legitimately carry numbers (e.g. "SSV Bozen 2", "Faustball Widnau 1").
+function isPlaceholderTeam(name) {
+  const n = String(name || "").trim();
+  if (!n) return true;
+  return /(winner|loser)/i.test(n)          // Winner/Loser SF1, QF3…
+      || /\b\d+(st|nd|rd|th)\b/i.test(n)     // ordinals: 1st/2nd/3rd/5th (Group A, Silver…)
+      || /\b(sf|qf)\s*\d/i.test(n);          // bare SF1 / QF2 round codes
+}
 function isRealTeam(name) {
-  if (!name) return false;
-  return !/\d/.test(name) && !/(winner|loser)/i.test(name);
+  return !!String(name || "").trim() && !isPlaceholderTeam(name);
 }
 
 function flagFor(team) {
