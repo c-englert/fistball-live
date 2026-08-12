@@ -1,5 +1,5 @@
 /* Service worker: app-shell cache + network-first data. */
-const VERSION = "fb-live-v40";
+const VERSION = "fb-live-v41";
 const SHELL = [
   "./",
   "./index.html",
@@ -14,8 +14,13 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (e) => {
-  // Auto-update: take over as soon as the new shell is cached (no user tap).
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // Cache the new shell but WAIT — the page shows a "New version" toast and only
+  // then messages us to skipWaiting (see app.js). No surprise reloads.
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)));
+});
+
+self.addEventListener("message", (e) => {
+  if (e.data === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (e) => {

@@ -1222,10 +1222,16 @@ if (isIOS() && !isStandalone() && !installDismissed() && !isEmbedded()) {
   window.addEventListener("load", () => setTimeout(() => showInstallModal("ios"), 1500));
 }
 
-// --- Service worker: AUTO-update ---------------------------------------
-// The new worker takes over on its own (sw.js calls skipWaiting), and when it
-// becomes the controller we reload once to pick up the fresh assets. No user
-// action needed — spectators always end up on the latest version.
+// --- Service worker: PROMPT to update ----------------------------------
+// A new worker installs but waits. We show a "New version" toast; tapping it
+// tells the worker to skipWaiting, then controllerchange reloads once.
+function showUpdateToast(worker) {
+  const el = document.getElementById("updateToast");
+  if (!el || !worker) return;
+  el.hidden = false;
+  const btn = document.getElementById("updateBtn");
+  if (btn) btn.onclick = () => { btn.disabled = true; worker.postMessage("SKIP_WAITING"); };
+}
 if ("serviceWorker" in navigator) {
   let reloading = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
@@ -1233,8 +1239,19 @@ if ("serviceWorker" in navigator) {
     reloading = true;
     location.reload();
   });
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+  window.addEventListener("load", async () => {
+    try {
+      const reg = await navigator.serviceWorker.register("sw.js");
+      setInterval(() => reg.update().catch(() => {}), 60 * 1000); // learn about deploys while open
+      if (reg.waiting && navigator.serviceWorker.controller) showUpdateToast(reg.waiting);
+      reg.addEventListener("updatefound", () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener("statechange", () => {
+          if (nw.state === "installed" && navigator.serviceWorker.controller) showUpdateToast(reg.waiting || nw);
+        });
+      });
+    } catch (_) { /* SW unavailable */ }
   });
 }
 
