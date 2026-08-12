@@ -1167,18 +1167,60 @@ function showBanner(msg) {
 /* ---------------------- PWA install ---------------------- */
 
 let deferredPrompt = null;
+const isEmbedded = () => document.body.classList.contains("embedded");
+const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+const installDismissed = () => localStorage.getItem("fb_install_dismissed") === "1";
+
+function showInstallModal(mode) { // mode: "prompt" | "ios"
+  const m = $("installModal");
+  if (!m || isEmbedded()) return;
+  const go = $("installGo"), msg = $("installMsg");
+  if (mode === "ios") {
+    go.hidden = true;
+    msg.innerHTML = 'Tap the <b>Share</b> button, then <b>“Add to Home Screen”</b> to install.';
+  } else {
+    go.hidden = false;
+    msg.textContent = "Install the app for one-tap access to live scores, standings, bracket and cards.";
+  }
+  m.hidden = false;
+}
+function hideInstallModal() { const m = $("installModal"); if (m) m.hidden = true; }
+
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
   $("installBtn").hidden = false;
+  // Auto-invite once, unless already installed, dismissed, or embedded in Arena.
+  if (!isStandalone() && !installDismissed() && !isEmbedded()) {
+    setTimeout(() => showInstallModal("prompt"), 1200);
+  }
 });
-$("installBtn").onclick = async () => {
+
+// Header button re-opens the invite (native prompt if available, else iOS hint).
+$("installBtn").onclick = () => showInstallModal(deferredPrompt ? "prompt" : (isIOS() ? "ios" : "prompt"));
+
+$("installGo").onclick = async () => {
+  hideInstallModal();
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
   await deferredPrompt.userChoice;
   deferredPrompt = null;
   $("installBtn").hidden = true;
 };
+$("installLater").onclick = () => { hideInstallModal(); localStorage.setItem("fb_install_dismissed", "1"); };
+$("installBackdrop").onclick = () => hideInstallModal();
+
+window.addEventListener("appinstalled", () => {
+  hideInstallModal();
+  $("installBtn").hidden = true;
+  localStorage.setItem("fb_install_dismissed", "1");
+});
+
+// iOS Safari never fires beforeinstallprompt — invite once on first visit.
+if (isIOS() && !isStandalone() && !installDismissed() && !isEmbedded()) {
+  window.addEventListener("load", () => setTimeout(() => showInstallModal("ios"), 1500));
+}
 
 // --- Service worker: AUTO-update ---------------------------------------
 // The new worker takes over on its own (sw.js calls skipWaiting), and when it

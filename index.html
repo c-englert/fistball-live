@@ -77,6 +77,18 @@
     <p>Data updates live from the official scoring sheet. Standings are computed from completed group-stage matches.</p>
   </footer>
 
+  <!-- Invite to install the PWA -->
+  <div id="installModal" class="install-modal" hidden>
+    <div id="installBackdrop" class="install-backdrop"></div>
+    <div class="install-card" role="dialog" aria-modal="true" aria-labelledby="installTitle">
+      <div class="install-logo"><img src="assets/ifa-mark-white.png" alt="" /></div>
+      <h2 id="installTitle">Welcome to Fistball Live</h2>
+      <p id="installMsg" class="install-msg">Install the app for one-tap access to live scores, standings, bracket and cards.</p>
+      <button id="installGo" class="install-primary">Install App</button>
+      <button id="installLater" class="install-ghost">Maybe later</button>
+    </div>
+  </div>
+
 
   <script src="app.js"></script>
 
