@@ -1230,7 +1230,16 @@ function showUpdateToast(worker) {
   if (!el || !worker) return;
   el.hidden = false;
   const btn = document.getElementById("updateBtn");
-  if (btn) btn.onclick = () => { btn.disabled = true; worker.postMessage("SKIP_WAITING"); };
+  if (btn) btn.onclick = async () => {
+    btn.disabled = true;
+    try { worker.postMessage("SKIP_WAITING"); } catch (_) {}
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+      if (window.caches) { const keys = await caches.keys(); await Promise.all(keys.map((k) => caches.delete(k))); }
+    } catch (_) {}
+    location.reload();
+  };
 }
 if ("serviceWorker" in navigator) {
   let reloading = false;
