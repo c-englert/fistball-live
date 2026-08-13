@@ -575,7 +575,10 @@ function renderKnockout(category) {
   if (tree.sf.length) cols.push(["Semifinals", tree.sf]);
   if (tree.final.length || tree.bronze.length) cols.push(["Final", tree.final, tree.bronze]);
   if (cols.length) {
-    html += `<div class="bracket">`;
+    // "Flat" bracket: each semifinal is fed by at most one quarterfinal winner
+    // (the rest are seed byes), so QF→SF are straight 1:1 lines, not merged pairs.
+    const flat = tree.qf.length > 0 && tree.qf.length <= tree.sf.length;
+    html += `<div class="bracket ${flat ? "bracket--flat" : ""}">`;
     for (const [title, items, bronze] of cols) {
       if (bronze !== undefined) {
         // Final column: final centred (level with the SF midpoint), bronze just below.
