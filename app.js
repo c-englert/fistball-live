@@ -569,15 +569,26 @@ function renderKnockout(category) {
 
   let html = "";
 
+  // "Flat" bracket: each semifinal is fed by at most one quarterfinal winner
+  // (the rest are seed byes), so QF→SF are straight 1:1 lines, not merged pairs.
+  const flat = tree.qf.length > 0 && tree.qf.length <= tree.sf.length;
+  // Align the QF column with the SF each one feeds (by the "Winner <QF round>"
+  // label), padding with null where a semifinal is a seed bye.
+  let qfCol = tree.qf;
+  if (flat) {
+    const mapped = tree.sf.map((sf) => {
+      const names = [sf.teamA, sf.teamB].map((x) => String(x || "").toLowerCase());
+      return tree.qf.find((qf) => { const rd = String(qf.round || "").toLowerCase(); return rd && names.some((nm) => nm.includes("winner") && nm.includes(rd)); }) || null;
+    });
+    if (mapped.some(Boolean)) qfCol = mapped;
+  }
+
   // Medal-path tree
   const cols = [];
-  if (tree.qf.length) cols.push(["Quarterfinals", tree.qf]);
+  if (tree.qf.length) cols.push(["Quarterfinals", qfCol]);
   if (tree.sf.length) cols.push(["Semifinals", tree.sf]);
   if (tree.final.length || tree.bronze.length) cols.push(["Final", tree.final, tree.bronze]);
   if (cols.length) {
-    // "Flat" bracket: each semifinal is fed by at most one quarterfinal winner
-    // (the rest are seed byes), so QF→SF are straight 1:1 lines, not merged pairs.
-    const flat = tree.qf.length > 0 && tree.qf.length <= tree.sf.length;
     html += `<div class="bracket ${flat ? "bracket--flat" : ""}">`;
     for (const [title, items, bronze] of cols) {
       if (bronze !== undefined) {
@@ -599,7 +610,7 @@ function renderKnockout(category) {
           </div></div>`;
       } else {
         html += `<div class="bround"><div class="bround-title">${title}</div>
-          <div class="bround-cards">${items.map((m) => `<div class="bslot">${bracketNode(m)}</div>`).join("")}</div></div>`;
+          <div class="bround-cards">${items.map((m) => m ? `<div class="bslot">${bracketNode(m)}</div>` : `<div class="bslot bslot--pad" aria-hidden="true"></div>`).join("")}</div></div>`;
       }
     }
     html += `</div>`;

@@ -493,6 +493,7 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
 /* Flat bracket (fistball formats): QF feeds SF 1:1, so no merging pairs — the
    quarterfinal column keeps only its straight horizontal stub. */
 .bracket--flat .bround:first-child .bslot::before { display: none; }
+.bslot--pad::after, .bslot--pad::before { display: none !important; } /* bye row: no connector */
 .bround:not(:first-child) .bslot .bmatch::before,
 .bround:not(:first-child) .bround-cards--final .gold-block > .bmatch::before { /* line into the next match */
   content: "";
