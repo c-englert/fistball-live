@@ -54,10 +54,14 @@ function orderIndex(cat) {
 
 // Map of country -> flag emoji (best effort; falls back to none).
 const FLAGS = {
-  "Austria": "🇦🇹", "Brazil": "🇧🇷", "Germany": "🇩🇪", "Switzerland": "🇨🇭",
+  "Austria": "🇦🇹", "Brazil": "🇧🇷", "Brasil": "🇧🇷", "Germany": "🇩🇪", "Switzerland": "🇨🇭",
   "Chile": "🇨🇱", "India": "🇮🇳", "Namibia": "🇳🇦", "Kenya": "🇰🇪",
   "New Zealand": "🇳🇿", "Italy": "🇮🇹", "Czech Republic": "🇨🇿", "Denmark": "🇩🇰",
   "Serbia": "🇷🇸",
+  // South America
+  "Argentina": "🇦🇷", "Uruguay": "🇺🇾", "Uruguai": "🇺🇾", "Paraguay": "🇵🇾", "Paraguai": "🇵🇾",
+  "Colombia": "🇨🇴", "Colômbia": "🇨🇴", "Peru": "🇵🇪", "Perú": "🇵🇪", "Bolivia": "🇧🇴", "Bolívia": "🇧🇴",
+  "Ecuador": "🇪🇨", "Equador": "🇪🇨", "Venezuela": "🇻🇪",
 };
 
 const state = {

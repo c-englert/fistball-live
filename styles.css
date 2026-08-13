@@ -494,6 +494,10 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
    quarterfinal column keeps only its straight horizontal stub. */
 .bracket--flat .bround:first-child .bslot::before { display: none; }
 .bslot--pad::after, .bslot--pad::before { display: none !important; } /* bye row: no connector */
+/* Straight QF→SF line spanning the gap; remove the SF's incoming stub so byes
+   (and the merge V) don't leave dangling/crossed lines. */
+.bracket--flat .bround:first-child .bslot:not(.bslot--pad)::after { width: 26px; }
+.bracket--flat .bround:nth-child(2) .bslot .bmatch::before { display: none; }
 .bround:not(:first-child) .bslot .bmatch::before,
 .bround:not(:first-child) .bround-cards--final .gold-block > .bmatch::before { /* line into the next match */
   content: "";
