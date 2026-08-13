@@ -287,6 +287,54 @@ tr.qualified .pos { background: var(--accent); color: #fff; }
   box-shadow: var(--shadow);
 }
 .match.live { border-color: var(--live); box-shadow: 0 0 0 1px var(--live), var(--shadow); }
+
+/* Schedule (whole-event timetable by time) */
+.sch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  margin-bottom: 8px;
+}
+.sch-row.live { border-color: var(--live); box-shadow: 0 0 0 1px var(--live); }
+.sch-when {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 48px;
+}
+.sch-time { font-weight: 700; font-size: 15px; }
+.sch-court {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.sch-mid { flex: 1 1 auto; min-width: 0; }
+.sch-cat {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 3px;
+}
+.sch-teams {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  flex-wrap: wrap;
+}
+.sch-team { display: inline-flex; align-items: center; }
+.sch-team.win { font-weight: 700; }
+.sch-team .flag { margin-right: 5px; }
+.sch-vs { color: var(--muted); font-size: 12px; font-weight: 700; }
 .match-top {
   display: flex;
   justify-content: space-between;

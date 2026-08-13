@@ -732,20 +732,75 @@ function setView(view) {
   $("tabStandings").classList.toggle("is-active", view === "standings");
   $("tabBracket").classList.toggle("is-active", view === "bracket");
   $("tabMatches").classList.toggle("is-active", view === "matches");
+  $("tabSchedule").classList.toggle("is-active", view === "schedule");
   $("tabCards").classList.toggle("is-active", view === "cards");
   $("standingsView").hidden = view !== "standings";
   $("bracketView").hidden = view !== "bracket";
   $("matchesView").hidden = view !== "matches";
+  $("scheduleView").hidden = view !== "schedule";
   $("cardsView").hidden = view !== "cards";
   renderActiveView();
 }
 
 function renderActiveView() {
-  if (state.activeView === "cards") return renderCards();   // tournament-wide
+  if (state.activeView === "cards") return renderCards();       // tournament-wide
+  if (state.activeView === "schedule") return renderSchedule(); // tournament-wide, by time
   if (!state.activeCategory) return;
   if (state.activeView === "standings") renderStandings();
   else if (state.activeView === "bracket") renderBracket();
   else renderMatches();
+}
+
+// Full event timetable: every category's matches, ordered by day → time → court.
+function renderSchedule() {
+  const host = $("schedule");
+  const all = state.matches.filter((m) => m.teamA && m.teamB);
+  if (!all.length) { host.innerHTML = `<div class="empty">No matches scheduled yet.</div>`; return; }
+  const sorted = [...all].sort((a, b) =>
+    (matchStartMs(a) || 0) - (matchStartMs(b) || 0)
+    || String(a.court).localeCompare(String(b.court), undefined, { numeric: true })
+    || (num(a.nr) - num(b.nr)));
+
+  // group by day (in chronological order)
+  const groups = [];
+  const idx = new Map();
+  for (const m of sorted) {
+    const key = m.day || "—";
+    if (!idx.has(key)) { idx.set(key, groups.length); groups.push({ day: key, items: [] }); }
+    groups[idx.get(key)].items.push(m);
+  }
+
+  host.innerHTML = groups.map((g) => `
+    <div class="day-group">
+      <div class="day-head">${esc(dayLabelLong(g.day))}</div>
+      ${g.items.map(scheduleRow).join("")}
+    </div>`).join("");
+}
+
+function dayLabelLong(day) {
+  const [d, m, y] = String(day).split("/").map(Number);
+  if (!d) return day;
+  const dt = new Date(2000 + (y || 0), (m || 1) - 1, d);
+  return dt.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
+}
+
+function scheduleRow(m) {
+  const aWin = isFinished(m) && m.setsA > m.setsB;
+  const bWin = isFinished(m) && m.setsB > m.setsA;
+  const score = (m.setsA + m.setsB > 0) ? `${m.setsA}–${m.setsB}` : "";
+  return `
+  <div class="sch-row ${isLive(m) ? "live" : ""}">
+    <div class="sch-when"><span class="sch-time">${esc(m.time || "")}</span>${m.court ? `<span class="sch-court">${esc(m.court)}</span>` : ""}</div>
+    <div class="sch-mid">
+      <div class="sch-cat">${esc(m.category)} · ${esc(m.round)}</div>
+      <div class="sch-teams">
+        <span class="sch-team ${aWin ? "win" : ""}"><span class="flag">${flagFor(m.teamA)}</span>${esc(m.teamA)}</span>
+        <span class="sch-vs">${score || "vs"}</span>
+        <span class="sch-team ${bWin ? "win" : ""}"><span class="flag">${flagFor(m.teamB)}</span>${esc(m.teamB)}</span>
+      </div>
+    </div>
+    <span class="status ${statusClass(m.status)}">${esc(m.status)}</span>
+  </div>`;
 }
 
 function renderBracket() {
@@ -1287,6 +1342,7 @@ if ("serviceWorker" in navigator) {
 $("tabStandings").onclick = () => setView("standings");
 $("tabBracket").onclick = () => setView("bracket");
 $("tabMatches").onclick = () => setView("matches");
+$("tabSchedule").onclick = () => setView("schedule");
 $("tabCards").onclick = () => setView("cards");
 $("refreshBtn").onclick = () => load(true);
 setView(state.activeView);
