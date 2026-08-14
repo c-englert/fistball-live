@@ -295,11 +295,13 @@ tr.qualified .pos { background: var(--accent); color: #fff; }
   gap: 12px;
   background: var(--bg-elev);
   border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
   border-radius: var(--radius);
   padding: 9px 12px;
   margin-bottom: 8px;
 }
 .sch-row.live { border-color: var(--live); box-shadow: 0 0 0 1px var(--live); }
+.sch-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
 .sch-when {
   flex: 0 0 auto;
   display: flex;

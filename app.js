@@ -784,15 +784,25 @@ function dayLabelLong(day) {
   return dt.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
 }
 
+// A stable, distinct colour per category (so men/women rows with identical team
+// names are easy to tell apart in the whole-event timetable).
+const CAT_PALETTE = ["#6c5ce7", "#e84393", "#00b894", "#0984e3", "#e17055", "#00cec9", "#d63031", "#a29bfe", "#fdcb6e", "#636e72"];
+function categoryColor(cat) {
+  let i = (state.categories || []).indexOf(cat);
+  if (i < 0) { let h = 0; for (const c of String(cat)) h = (h * 31 + c.charCodeAt(0)) >>> 0; i = h % CAT_PALETTE.length; }
+  return CAT_PALETTE[i % CAT_PALETTE.length];
+}
+
 function scheduleRow(m) {
   const aWin = isFinished(m) && m.setsA > m.setsB;
   const bWin = isFinished(m) && m.setsB > m.setsA;
   const score = (m.setsA + m.setsB > 0) ? `${m.setsA}–${m.setsB}` : "";
+  const col = categoryColor(m.category);
   return `
-  <div class="sch-row ${isLive(m) ? "live" : ""}">
+  <div class="sch-row ${isLive(m) ? "live" : ""}" style="border-left-color:${col}">
     <div class="sch-when"><span class="sch-time">${esc(m.time || "")}</span>${m.court ? `<span class="sch-court">${esc(m.court)}</span>` : ""}</div>
     <div class="sch-mid">
-      <div class="sch-cat">${esc(m.category)} · ${esc(m.round)}</div>
+      <div class="sch-cat" style="color:${col}"><span class="sch-dot" style="background:${col}"></span>${esc(m.category)} · ${esc(m.round)}</div>
       <div class="sch-teams">
         <span class="sch-team ${aWin ? "win" : ""}"><span class="flag">${flagFor(m.teamA)}</span>${esc(m.teamA)}</span>
         <span class="sch-vs">${score || "vs"}</span>
