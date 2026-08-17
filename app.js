@@ -754,7 +754,12 @@ function renderActiveView() {
 // Full event timetable: every category's matches, ordered by day → time → court.
 function renderSchedule() {
   const host = $("schedule");
-  const all = state.matches.filter((m) => m.teamA && m.teamB);
+  const games = state.matches.filter((m) => m.teamA && m.teamB);
+  // Non-game entries (ceremonies, breaks) from the event's public doc.
+  const blocks = ((state.eventInfo && state.eventInfo.scheduleBlocks) || [])
+    .filter((b) => b && (b.time || b.date))
+    .map((b) => ({ isBlock: true, day: b.date || "", time: b.time || "", court: b.court || "", label: b.label || "" }));
+  const all = [...games, ...blocks];
   if (!all.length) { host.innerHTML = `<div class="empty">No matches scheduled yet.</div>`; return; }
   const sorted = [...all].sort((a, b) =>
     (matchStartMs(a) || 0) - (matchStartMs(b) || 0)
@@ -773,8 +778,16 @@ function renderSchedule() {
   host.innerHTML = groups.map((g) => `
     <div class="day-group">
       <div class="day-head">${esc(dayLabelLong(g.day))}</div>
-      ${g.items.map(scheduleRow).join("")}
+      ${g.items.map((it) => (it.isBlock ? blockRow(it) : scheduleRow(it))).join("")}
     </div>`).join("");
+}
+
+function blockRow(b) {
+  return `
+  <div class="sch-row sch-block">
+    <div class="sch-when"><span class="sch-time">${esc(b.time || "")}</span>${b.court ? `<span class="sch-court">${esc(b.court)}</span>` : ""}</div>
+    <div class="sch-mid"><div class="sch-block-label">🏆 ${esc(b.label || "Ceremony")}</div></div>
+  </div>`;
 }
 
 function dayLabelLong(day) {

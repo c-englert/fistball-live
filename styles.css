@@ -302,6 +302,8 @@ tr.qualified .pos { background: var(--accent); color: #fff; }
 }
 .sch-row.live { border-color: var(--live); box-shadow: 0 0 0 1px var(--live); }
 .sch-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+.sch-row.sch-block { border-left: 4px solid var(--gold, #f5c451); background: rgba(245, 196, 81, 0.08); }
+.sch-block-label { font-weight: 700; font-size: 14px; }
 .sch-when {
   flex: 0 0 auto;
   display: flex;
