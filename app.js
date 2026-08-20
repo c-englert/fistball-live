@@ -756,7 +756,8 @@ function renderActiveView() {
 function scheduleMatchesQuery(m) {
   const q = (state.scheduleQuery || "").trim().toLowerCase();
   if (!q) return true;
-  return String(m.nr || "").includes(q)
+  const num = q.replace(/^#/, ""); // allow "#6" as well as "6"
+  return (num && String(m.nr || "").includes(num))
     || String(m.teamA || "").toLowerCase().includes(q)
     || String(m.teamB || "").toLowerCase().includes(q)
     || String(m.category || "").toLowerCase().includes(q)
