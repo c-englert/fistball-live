@@ -304,6 +304,9 @@ tr.qualified .pos { background: var(--accent); color: #fff; }
 .sch-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
 .sch-row.sch-block { border-left: 4px solid var(--gold, #f5c451); background: rgba(245, 196, 81, 0.08); }
 .sch-block-label { font-weight: 700; font-size: 14px; }
+.sch-search-bar { margin-bottom: 12px; }
+.game-search { width: 100%; box-sizing: border-box; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; font-size: 15px; background: var(--bg-elev); color: var(--text); }
+.game-search::placeholder { color: var(--muted); }
 .sch-when {
   flex: 0 0 auto;
   display: flex;

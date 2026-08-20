@@ -72,6 +72,7 @@ const state = {
   activeCategory: localStorage.getItem("fb_category") || null,
   activeView: localStorage.getItem("fb_view") || "standings",
   matchFilter: "all",
+  scheduleQuery: "",
   crossMode: localStorage.getItem("fb_cross") || "sets",
   rules: null,
   cautions: [],
@@ -752,15 +753,30 @@ function renderActiveView() {
 }
 
 // Full event timetable: every category's matches, ordered by day → time → court.
+function scheduleMatchesQuery(m) {
+  const q = (state.scheduleQuery || "").trim().toLowerCase();
+  if (!q) return true;
+  return String(m.nr || "").includes(q)
+    || String(m.teamA || "").toLowerCase().includes(q)
+    || String(m.teamB || "").toLowerCase().includes(q)
+    || String(m.category || "").toLowerCase().includes(q)
+    || String(m.label || "").toLowerCase().includes(q);
+}
+
 function renderSchedule() {
   const host = $("schedule");
-  const games = state.matches.filter((m) => m.teamA && m.teamB);
+  const games = state.matches.filter((m) => m.teamA && m.teamB && scheduleMatchesQuery(m));
   // Non-game entries (ceremonies, breaks) from the event's public doc.
   const blocks = ((state.eventInfo && state.eventInfo.scheduleBlocks) || [])
     .filter((b) => b && (b.time || b.date))
-    .map((b) => ({ isBlock: true, day: b.date || "", time: b.time || "", court: b.court || "", label: b.label || "" }));
+    .map((b) => ({ isBlock: true, day: b.date || "", time: b.time || "", court: b.court || "", label: b.label || "" }))
+    .filter(scheduleMatchesQuery);
   const all = [...games, ...blocks];
-  if (!all.length) { host.innerHTML = `<div class="empty">No matches scheduled yet.</div>`; return; }
+  if (!all.length) {
+    const q = (state.scheduleQuery || "").trim();
+    host.innerHTML = `<div class="empty">${q ? "No matches for “" + esc(q) + "”." : "No matches scheduled yet."}</div>`;
+    return;
+  }
   const sorted = [...all].sort((a, b) =>
     (matchStartMs(a) || 0) - (matchStartMs(b) || 0)
     || String(a.court).localeCompare(String(b.court), undefined, { numeric: true })
@@ -1366,6 +1382,10 @@ $("tabStandings").onclick = () => setView("standings");
 $("tabBracket").onclick = () => setView("bracket");
 $("tabMatches").onclick = () => setView("matches");
 $("tabSchedule").onclick = () => setView("schedule");
+{
+  const ss = $("scheduleSearch");
+  if (ss) ss.oninput = (e) => { state.scheduleQuery = e.target.value; renderSchedule(); };
+}
 $("tabCards").onclick = () => setView("cards");
 $("refreshBtn").onclick = () => load(true);
 setView(state.activeView);
