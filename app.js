@@ -702,12 +702,12 @@ function matchCard(m) {
       <span class="status ${statusClass(m.status)}">${esc(m.status)}</span>
     </div>
     <div class="match-row ${aWin ? "winner" : ""}">
-      <div class="side"><span class="flag">${flagFor(m.teamA)}</span><span class="name">${esc(m.teamA)}</span></div>
+      <div class="side"><span class="flag">${flagFor(m.teamA)}</span><span class="name">${esc(teamLabel(m.teamA, m.teamAShort))}</span></div>
       ${showSets ? `<div class="big-sets ${aWin ? "win" : ""}">${m.setsA}</div>` : ""}
     </div>
     <div class="match-divider"></div>
     <div class="match-row ${bWin ? "winner" : ""}">
-      <div class="side"><span class="flag">${flagFor(m.teamB)}</span><span class="name">${esc(m.teamB)}</span></div>
+      <div class="side"><span class="flag">${flagFor(m.teamB)}</span><span class="name">${esc(teamLabel(m.teamB, m.teamBShort))}</span></div>
       ${showSets ? `<div class="big-sets ${bWin ? "win" : ""}">${m.setsB}</div>` : ""}
     </div>
     ${setBadges}
@@ -823,6 +823,9 @@ function categoryColor(cat) {
   return CAT_PALETTE[i % CAT_PALETTE.length];
 }
 
+// Prefer the team's short/display name (set in Arena) when present.
+function teamLabel(name, short) { return (short && String(short).trim()) ? String(short).trim() : name; }
+
 function scheduleRow(m) {
   const aWin = isFinished(m) && m.setsA > m.setsB;
   const bWin = isFinished(m) && m.setsB > m.setsA;
@@ -834,9 +837,9 @@ function scheduleRow(m) {
     <div class="sch-mid">
       <div class="sch-cat" style="color:${col}"><span class="sch-dot" style="background:${col}"></span>${esc(m.category)} · ${esc(m.round)}</div>
       <div class="sch-teams">
-        <span class="sch-team ${aWin ? "win" : ""}"><span class="flag">${flagFor(m.teamA)}</span>${esc(m.teamA)}</span>
+        <span class="sch-team ${aWin ? "win" : ""}"><span class="flag">${flagFor(m.teamA)}</span>${esc(teamLabel(m.teamA, m.teamAShort))}</span>
         <span class="sch-vs">${score || "vs"}</span>
-        <span class="sch-team ${bWin ? "win" : ""}"><span class="flag">${flagFor(m.teamB)}</span>${esc(m.teamB)}</span>
+        <span class="sch-team ${bWin ? "win" : ""}"><span class="flag">${flagFor(m.teamB)}</span>${esc(teamLabel(m.teamB, m.teamBShort))}</span>
       </div>
     </div>
     <span class="status ${statusClass(m.status)}">${esc(m.status)}</span>
@@ -1115,6 +1118,7 @@ function fsRowToMatch(d) {
     day: d.date || "", time: d.time || "", nr: num(d.nr), court: d.court || "",
     teamARaw: d.teamA, teamBRaw: d.teamB,
     teamA: cleanTeam(d.teamA, d.category), teamB: cleanTeam(d.teamB, d.category),
+    teamAShort: (d.teamAShort || "").trim(), teamBShort: (d.teamBShort || "").trim(),
     round: d.round || "", category: d.category, group: (d.group || "").toString().trim(), bestOf: num(d.bestOf),
     setsA: num(d.setsA), setsB: num(d.setsB),
     pointsA: num(d.pointsA), pointsB: num(d.pointsB),
