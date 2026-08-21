@@ -1205,6 +1205,15 @@ window.applyEventInfo = function (b) {
       for (const p of b.promoters || []) if (p && p.dataUrl) urls.push(p.dataUrl);
       logosEl.innerHTML = urls.map((u) => '<img src="' + u + '" alt="" />').join("");
     }
+    // Event-defined classification point table (IFA / PAFA / custom). Empty →
+    // matchPointsFor falls back to win 2 / loss 0.
+    if (Array.isArray(b.pointTable) && b.pointTable.length) {
+      state.rules = {
+        pointTable: b.pointTable.map((r) => ({ bestOf: num(r.bestOf), winSets: num(r.winSets), loseSets: num(r.loseSets), winPts: num(r.winPts), losePts: num(r.losePts) })),
+        drawPoints: Number.isFinite(b.drawPoints) ? b.drawPoints : 1,
+        tiebreakers: (state.rules && state.rules.tiebreakers) || DEFAULT_TIEBREAKERS.slice(),
+      };
+    }
   }
   // Re-render so imported cautions (b.cautions) reach the Cards tab; remerge
   // also refreshes the countdown from the new start date.
