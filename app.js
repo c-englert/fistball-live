@@ -73,6 +73,7 @@ const state = {
   activeView: localStorage.getItem("fb_view") || "standings",
   matchFilter: "all",
   scheduleQuery: "",
+  weather: {},
   crossMode: localStorage.getItem("fb_cross") || "sets",
   rules: null,
   cautions: [],
@@ -792,11 +793,52 @@ function renderSchedule() {
     groups[idx.get(key)].items.push(m);
   }
 
-  host.innerHTML = groups.map((g) => `
+  host.innerHTML = groups.map((g) => {
+    const w = state.weather[g.day];
+    const wx = w ? ` <span class="day-wx">${wmoIcon(w.code)} ${w.tmin}°–${w.tmax}°${w.precip != null ? ` · 💧${w.precip}%` : ""}</span>` : "";
+    return `
     <div class="day-group">
-      <div class="day-head">${esc(dayLabelLong(g.day))}</div>
+      <div class="day-head">${esc(dayLabelLong(g.day))}${wx}</div>
       ${g.items.map((it) => (it.isBlock ? blockRow(it) : scheduleRow(it))).join("")}
-    </div>`).join("");
+    </div>`;
+  }).join("");
+}
+
+// Weather (Open-Meteo, free/keyless). Geocodes the event place, then shows a
+// daily forecast per schedule day (only ~16 days out; silently absent otherwise).
+function wmoIcon(code) {
+  const c = Number(code);
+  if (c === 0) return "☀️";
+  if (c <= 2) return "🌤️";
+  if (c === 3) return "☁️";
+  if (c <= 48) return "🌫️";
+  if (c <= 67) return "🌧️";
+  if (c <= 77) return "🌨️";
+  if (c <= 82) return "🌦️";
+  if (c <= 86) return "🌨️";
+  if (c >= 95) return "⛈️";
+  return "🌡️";
+}
+async function loadWeather() {
+  try {
+    const place = (state.eventInfo && state.eventInfo.place) || (state.livePointer && state.livePointer.place) || "";
+    const city = String(place).split(/[·,\-–|/]/)[0].trim();
+    if (!city || state._weatherCity === city) return;
+    state._weatherCity = city;
+    const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`).then((r) => r.json());
+    const loc = g && g.results && g.results[0];
+    if (!loc) return;
+    const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16`).then((r) => r.json());
+    const d = w && w.daily;
+    if (!d || !d.time) return;
+    const map = {};
+    d.time.forEach((iso, i) => {
+      const [y, m, dd] = iso.split("-");
+      map[`${dd}/${m}/${y.slice(2)}`] = { code: d.weather_code[i], tmax: Math.round(d.temperature_2m_max[i]), tmin: Math.round(d.temperature_2m_min[i]), precip: d.precipitation_probability_max ? d.precipitation_probability_max[i] : null };
+    });
+    state.weather = map;
+    if (state.activeView === "schedule") renderSchedule();
+  } catch (_) { /* weather is best-effort */ }
 }
 
 function blockRow(b) {
@@ -1167,6 +1209,7 @@ window.applyEventInfo = function (b) {
   // Re-render so imported cautions (b.cautions) reach the Cards tab; remerge
   // also refreshes the countdown from the new start date.
   remerge();
+  loadWeather();
 };
 
 function isoToMs(iso) {
