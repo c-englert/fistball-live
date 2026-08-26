@@ -535,8 +535,12 @@ function knockoutStage(round) {
   if (r.includes("gold medal") || r.includes("gold medal match")) return { group: "tree", key: "final", title: "Final" };
   if (r.includes("hoffnung")) return { group: "list", title: "Repechage", order: 1 };
   if (r.includes("intermediate")) return { group: "list", title: "Intermediate round", order: 2 };
-  if (r.includes("placement 5")) return { group: "list", title: "5th place", order: 3 };
-  if (r.includes("7-9") || r.includes("placement 7")) return { group: "list", title: "Places 7–9", order: 4 };
+  // Placement ranges: derive the label from the actual round (e.g. "Placement
+  // 7-8" → "Places 7–8", "7-9" → "Places 7–9") instead of assuming 7–9.
+  const range = r.match(/(?:placement|places?|p)\s*(\d+)\s*[-–]\s*(\d+)/);
+  if (range) return { group: "list", title: `Places ${range[1]}–${range[2]}`, order: 3 + Number(range[1]) / 100 };
+  const single = r.match(/placement\s*(\d+)\b/);
+  if (single) return { group: "list", title: `${single[1]}th place`, order: 3 + Number(single[1]) / 100 };
   return { group: "list", title: round, order: 5 };
 }
 
