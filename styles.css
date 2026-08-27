@@ -706,6 +706,17 @@ table.cross td.live { color: var(--gold); font-weight: 700; }
 .countdown .cd-label { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #9fb0d6; font-weight: 700; }
 .countdown .cd-clock { font-size: clamp(26px, 6vw, 44px); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
 
+/* Weather strip (event location forecast) */
+.weather-strip { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 10px 12px; margin: 12px 0; }
+.weather-strip .wx-head { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #9fb0d6; font-weight: 700; margin-bottom: 8px; }
+.weather-strip .wx-days { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.weather-strip .wx-days::-webkit-scrollbar { display: none; }
+.weather-strip .wx-day { flex: 0 0 auto; min-width: 92px; display: flex; flex-direction: column; align-items: center; gap: 2px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 8px 10px; }
+.weather-strip .wx-wd { font-size: 11px; color: #9fb0d6; font-weight: 700; white-space: nowrap; }
+.weather-strip .wx-ic { font-size: 22px; line-height: 1.2; }
+.weather-strip .wx-t { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.weather-strip .wx-p { font-size: 11px; color: #8fb7ff; font-weight: 700; }
+
 /* Embedded (?event=) inside Arena: hide install prompt */
 body.embedded .install-btn { display: none !important; }
 body.embedded .install-modal { display: none !important; }

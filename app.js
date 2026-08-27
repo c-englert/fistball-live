@@ -749,6 +749,7 @@ function setView(view) {
 }
 
 function renderActiveView() {
+  renderWeatherStrip(); // header forecast, shown on every tab
   if (state.activeView === "cards") return renderCards();       // tournament-wide
   if (state.activeView === "schedule") return renderSchedule(); // tournament-wide, by time
   if (!state.activeCategory) return;
@@ -841,8 +842,49 @@ async function loadWeather() {
       map[`${dd}/${m}/${y.slice(2)}`] = { code: d.weather_code[i], tmax: Math.round(d.temperature_2m_max[i]), tmin: Math.round(d.temperature_2m_min[i]), precip: d.precipitation_probability_max ? d.precipitation_probability_max[i] : null };
     });
     state.weather = map;
+    renderWeatherStrip();
     if (state.activeView === "schedule") renderSchedule();
   } catch (_) { /* weather is best-effort */ }
+}
+
+// The event's calendar days as dd/mm/yy — from the start/end dates when known,
+// otherwise the distinct game days.
+function eventDays() {
+  const s = state.eventInfo && state.eventInfo.startsAt;
+  const e = (state.eventInfo && state.eventInfo.endsAt) || s;
+  if (s) {
+    const [sy, sm, sd] = String(s).split("-").map(Number);
+    const [ey, em, ed] = String(e).split("-").map(Number);
+    const out = []; const end = new Date(ey, em - 1, ed);
+    for (let c = new Date(sy, sm - 1, sd); c <= end; c.setDate(c.getDate() + 1))
+      out.push(`${String(c.getDate()).padStart(2, "0")}/${String(c.getMonth() + 1).padStart(2, "0")}/${String(c.getFullYear()).slice(2)}`);
+    return out;
+  }
+  return [...new Set((state.games || []).map((g) => g.day).filter(Boolean))];
+}
+function weekdayShort(day) {
+  const [d, m, y] = String(day).split("/").map(Number);
+  return new Date(2000 + y, m - 1, d).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
+}
+// Compact forecast strip for the event location, shown under the header.
+function renderWeatherStrip() {
+  const el = document.getElementById("weather");
+  if (!el) return;
+  const items = eventDays().map((d) => ({ d, w: state.weather && state.weather[d] })).filter((x) => x.w);
+  if (!items.length) { el.hidden = true; el.innerHTML = ""; return; }
+  const place = (state.eventInfo && state.eventInfo.place) || "";
+  const city = String(place).split(/[·,\-–|/]/)[0].trim();
+  el.hidden = false;
+  el.innerHTML =
+    `<div class="wx-head">Forecast${city ? ` · ${esc(city)}` : ""}</div>` +
+    `<div class="wx-days">` +
+    items.map((x) =>
+      `<div class="wx-day"><span class="wx-wd">${esc(weekdayShort(x.d))}</span>` +
+      `<span class="wx-ic">${wmoIcon(x.w.code)}</span>` +
+      `<span class="wx-t">${x.w.tmin}°–${x.w.tmax}°</span>` +
+      `${x.w.precip != null ? `<span class="wx-p">💧${x.w.precip}%</span>` : ""}</div>`
+    ).join("") +
+    `</div>`;
 }
 
 function blockRow(b) {
