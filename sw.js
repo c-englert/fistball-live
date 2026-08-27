@@ -1,5 +1,5 @@
 /* Service worker: app-shell cache + network-first data. */
-const VERSION = "fb-live-v58";
+const VERSION = "fb-live-v59";
 const SHELL = [
   "./",
   "./index.html",
@@ -14,9 +14,10 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (e) => {
-  // Cache the new shell but WAIT — the page shows a "New version" toast and only
-  // then messages us to skipWaiting (see app.js). No surprise reloads.
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)));
+  // Cache the new shell and take over immediately (auto-update): the page's
+  // controllerchange listener reloads once. Prompt-mode left phones stuck on
+  // an old app.js (e.g. missing the weather strip).
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("message", (e) => {
@@ -34,13 +35,15 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
 
-  // Live data (Google Sheets): always go to network, never cache stale scores.
-  if (url.hostname.includes("docs.google.com")) return;
+  // Only the same-origin app shell is cached. Everything cross-origin (Firestore,
+  // Google Sheets, Open-Meteo weather, fonts…) goes straight to the network so the
+  // SW can never hand back index.html in place of an API/JSON response.
+  if (e.request.method !== "GET" || url.origin !== location.origin) return;
 
   // App shell: cache-first, fall back to network.
   e.respondWith(
     caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
-      if (e.request.method === "GET" && res.ok && url.origin === location.origin) {
+      if (res.ok) {
         const copy = res.clone();
         caches.open(VERSION).then((c) => c.put(e.request, copy));
       }
