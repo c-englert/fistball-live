@@ -1,105 +1,38 @@
-# Fistball Live 🤾
+# Fistball Live
 
-A live results & standings web app (installable **PWA**) for the
-**2026 U18 World Championship & Women's EFA Championship** (Reiden, Switzerland · 23–26 July 2026).
+Public spectator app for fistball (punhobol) tournaments: live scores,
+standings, knockout bracket, full schedule and a cards list — plus a countdown
+and weather forecast for the event location. Installable PWA, no login.
 
-Users pick a category and follow **standings** and **match results** that update
-automatically from the official Google Sheet — no backend, just static files.
+It is the read-only companion to **[Fistball Arena](../fistball-arena)**, which
+does the scoring and publishing. This app reads only the **public** Firestore
+docs Arena writes, so anyone can open it without an account.
 
-## Features
+Plain HTML/CSS/JS — no build step, no framework.
 
-- **Category selector** — switch between U18 M/W Gold/Silver, WEC, etc.
-- **Standings** — computed live from completed group-stage matches
-  (points, wins/losses, set ratio, set/point differential, with tiebreakers).
-- **Matches** — fixtures & results grouped by day, filterable (All / Live / Finished / Upcoming),
-  with per-set scores and live-match highlighting.
-- **Live updates** — auto-refresh every 60s and whenever the app regains focus.
-- **Installable PWA** — add to home screen on phone/desktop; works offline with the last loaded data.
+## Run your own instance
 
-## How the data works
+1. Point it at the **same Firebase project** your Arena app writes to: edit the
+   `initializeApp({...})` config block near the top of `index.html`
+   (apiKey / authDomain / projectId / appId — client-side, not secret).
+2. Serve the folder as static files (GitHub Pages, Netlify, or any web server).
+   For local testing: `python3 -m http.server` then open the printed URL.
+3. In Arena, use **Show on Live** on an event to set the `public/live` pointer;
+   Fistball Live then shows that event. You can also open a specific event with
+   `?event=<eventId>`.
 
-The app reads the results sheet directly in the browser via the Google
-Visualization CSV endpoint:
+## How it works
 
-```
-https://docs.google.com/spreadsheets/d/<SHEET_ID>/gviz/tq?tqx=out:csv&gid=<GID>
-```
+- Reads `public/live` to learn which event is on air, `public/event_{id}` for
+  the header/countdown/logos, and `events/{id}/results` for scores — all
+  public-read, so no authentication is required.
+- Weather is a keyless [Open-Meteo](https://open-meteo.com) forecast for the
+  event city (within ~16 days).
+- A service worker caches the app shell for offline/instant loads and
+  auto-updates on new deploys (bump `VERSION` in `sw.js` when you deploy).
 
-This works **only while the sheet is shared as “Anyone with the link → Viewer”**
-(it currently is). No API key or login is required, and viewers never get edit access.
+## License & branding
 
-## Scoring & tie-break rules (per-event, read from the `Config` tab)
-
-The app is event-agnostic: it reads the rules from the sheet's **`Config`** tab (by
-name), so a different event = a different sheet with its own rules, **no code change**.
-The parser scans for labels, so exact cell positions don't matter.
-
-- **Match points** — the existing **Point Table** (`BEST_OF, SETS_VENCEDOR,
-  SETS_PERDEDOR, PTS_VENCEDOR, PTS_PERDEDOR`). Each finished match looks up its
-  row by (best-of, winner sets, loser sets). This expresses flat win/loss (2/0),
-  per-set scoring (`PTS = sets won`), and score bonuses alike.
-- **Draws** — a cell labelled **`DRAW_POINTS`** with the value to its right
-  (default `1`). A finished match with equal sets is a draw.
-- **Tie-breakers** — a cell labelled **`TIEBREAKERS`** with an ordered list read
-  **downward** in the same column. Accepted tokens:
-  `H2H_SET_DIFF`, `H2H_SET_RATIO`, `H2H_POINT_DIFF`, `H2H_POINT_RATIO`,
-  `SET_DIFF`, `SET_RATIO`, `POINT_DIFF`, `POINT_RATIO`, `WINS`
-  (`H2H_` = only matches among the tied teams; `QUOTIENT` is accepted for `RATIO`).
-
-**Defaults if `Config` is absent or a setting is missing** — the official IFA rule
-(art. 11): win 2 / draw 1 / loss 0, then
-`H2H_SET_DIFF → H2H_SET_RATIO → H2H_POINT_DIFF → SET_DIFF → SET_RATIO → POINT_DIFF`,
-then drawing of lots (the app keeps a stable order). Head-to-head criteria are
-recomputed among whatever subset stays tied (so "between the teams concerned"
-is always honoured).
-
-Configuration lives at the top of [`app.js`](app.js):
-
-```js
-const CONFIG = {
-  sheetId: "1IWuv2zOZtIJDZCFnItp_z8p546azRGlD8I052jVe8Mk",
-  gid: "0",          // tab holding the schedule + scores
-  refreshMs: 60000,
-};
-```
-
-> **Note:** the app shows whatever is in that results tab. Right now the tab
-> contains matches **16–48** (group stage + first knock-outs). As the organizers
-> fill in scores and add the later matches (49–75), they appear automatically —
-> no code change needed. New categories also appear on their own.
-
-## Run locally
-
-```bash
-python3 -m http.server 8742
-# then open http://localhost:8742
-```
-
-(A service worker + PWA install only activate over `https://` or `localhost`.)
-
-## Deploy (any static host)
-
-The whole app is static files, so just upload the folder.
-
-**GitHub Pages**
-```bash
-git init && git add . && git commit -m "Fistball Live"
-git branch -M main
-git remote add origin <your-repo-url>
-git push -u origin main
-# then enable Pages → Deploy from branch → main / root
-```
-
-**Netlify / Vercel / Cloudflare Pages** — drag-and-drop the folder, or point it at the repo.
-No build step required.
-
-## Files
-
-| File | Purpose |
-|------|---------|
-| `index.html` | Markup / app shell |
-| `styles.css` | Styling (dark, mobile-first) |
-| `app.js` | Data fetch, parsing, standings, rendering |
-| `manifest.webmanifest` | PWA metadata |
-| `sw.js` | Service worker (offline shell, live data always from network) |
-| `icons/` | App icons (192/512 + maskable) |
+Code is released under the [MIT License](LICENSE). Trademarks and logos
+(IFA/PAFA marks, club logos) are **not** covered by this license and belong to
+their owners — replace `assets/ifa-mark*.png` with your own for a fork.
