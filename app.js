@@ -33,6 +33,17 @@ const DEFAULT_TIEBREAKERS = [
 ];
 const DEFAULT_RULES = { pointTable: [], drawPoints: 1, tiebreakers: DEFAULT_TIEBREAKERS.slice() };
 const rules = () => state.rules || DEFAULT_RULES;
+// Classification rules published by Arena on the event's public doc (PAFA / IFA /
+// custom point table). Returns null when the event defines none.
+function rulesFromEventInfo() {
+  const b = state.eventInfo;
+  if (!b || !Array.isArray(b.pointTable) || !b.pointTable.length) return null;
+  return {
+    pointTable: b.pointTable.map((r) => ({ bestOf: num(r.bestOf), winSets: num(r.winSets), loseSets: num(r.loseSets), winPts: num(r.winPts), losePts: num(r.losePts) })),
+    drawPoints: Number.isFinite(b.drawPoints) ? b.drawPoints : 1,
+    tiebreakers: (state.rules && state.rules.tiebreakers) || DEFAULT_TIEBREAKERS.slice(),
+  };
+}
 
 // Category chips are grouped into two rows (Women, then Men) and ordered
 // within each row following this list (the order used in the sheet).
@@ -1253,13 +1264,7 @@ window.applyEventInfo = function (b) {
     }
     // Event-defined classification point table (IFA / PAFA / custom). Empty →
     // matchPointsFor falls back to win 2 / loss 0.
-    if (Array.isArray(b.pointTable) && b.pointTable.length) {
-      state.rules = {
-        pointTable: b.pointTable.map((r) => ({ bestOf: num(r.bestOf), winSets: num(r.winSets), loseSets: num(r.loseSets), winPts: num(r.winPts), losePts: num(r.losePts) })),
-        drawPoints: Number.isFinite(b.drawPoints) ? b.drawPoints : 1,
-        tiebreakers: (state.rules && state.rules.tiebreakers) || DEFAULT_TIEBREAKERS.slice(),
-      };
-    }
+    state.rules = rulesFromEventInfo() || state.rules;
   }
   // Re-render so imported cautions (b.cautions) reach the Cards tab; remerge
   // also refreshes the countdown from the new start date.
@@ -1292,7 +1297,8 @@ function remerge() {
   let matches;
   if (state.eventDriven) {
     matches = fsList;
-    state.rules = DEFAULT_RULES;   // events use the default IFA ranking rules
+    // Use the event's published point table (PAFA/IFA/custom); default only if none.
+    state.rules = rulesFromEventInfo() || DEFAULT_RULES;
     // Cards come from the DB: live result cards + any imported cautions.
     state.cautions = buildCautions(fsList, state.eventInfo && state.eventInfo.cautions);
   } else {
