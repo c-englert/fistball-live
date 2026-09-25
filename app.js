@@ -727,7 +727,15 @@ function matchCard(m) {
       ${showSets ? `<div class="big-sets ${bWin ? "win" : ""}">${m.setsB}</div>` : ""}
     </div>
     ${setBadges}
+    ${tickerLink(m)}
   </div>`;
+}
+
+// Point-by-point page for a game (game.html) — once it has started.
+function tickerLink(m) {
+  const eid = state.livePointer && state.livePointer.eventId;
+  if (!eid || !m.id || m.status === "Not Started") return "";
+  return `<a class="ticker-link" href="game.html?event=${encodeURIComponent(eid)}&game=${encodeURIComponent(m.id)}">Point by point ›</a>`;
 }
 
 function esc(s) {
@@ -1214,6 +1222,7 @@ function applyData(csvText) {
 function fsRowToMatch(d) {
   if (!d || !d.nr || !d.teamA || !d.teamB || !d.category) return null;
   return {
+    id: d.id || "",
     day: d.date || "", time: d.time || "", nr: num(d.nr), court: d.court || "",
     teamARaw: d.teamA, teamBRaw: d.teamB,
     teamA: cleanTeam(d.teamA, d.category), teamB: cleanTeam(d.teamB, d.category),

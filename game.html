@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Game · Fistball Live</title>
+  <!--
+    Point-by-point live ticker for one game, from Fistball Arena (public read).
+      game.html?event=<eventId>&game=<gameId>
+    Also lists the broadcast links (overlay + JSON data) for that game.
+  -->
+  <link rel="icon" href="icons/favicon-64.png" type="image/png" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .gt { max-width: 760px; margin: 0 auto; padding: 16px; }
+    .gt-back { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 600; }
+    .gt-event { color: var(--muted); font-size: 13px; margin: 10px 0 6px; }
+    .gt-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .gt-chip { background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+    .gt-chip.live { background: var(--live); border-color: var(--live); color: #fff; }
+    .gt-score { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; margin: 16px 0;
+                background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 14px; }
+    .gt-team { font-size: 18px; font-weight: 800; }
+    .gt-team.b { text-align: right; }
+    .gt-team .lbl { display: block; font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .gt-team.win { color: var(--win); }
+    .gt-sets { text-align: center; font-size: 44px; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; }
+    .gt-sets small { display: block; font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .08em; margin-bottom: 4px; }
+    .gt-sets .cur { display: block; font-size: 15px; color: var(--gold); margin-top: 6px; }
+    .gt-set { background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px; }
+    .gt-set-h { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; }
+    .gt-set-h .sc { font-size: 20px; font-variant-numeric: tabular-nums; }
+    .gt-bar { height: 5px; background: var(--bg-elev-2); border-radius: 3px; margin: 8px 0; overflow: hidden; display: flex; }
+    .gt-bar i { display: block; background: var(--accent); } .gt-bar i.b { background: var(--women); }
+    .gt-pts { display: flex; flex-wrap: wrap; gap: 5px; }
+    .gt-pts span { font-size: 12px; font-variant-numeric: tabular-nums; border-radius: 6px; padding: 2px 6px; border: 1px solid var(--line); }
+    .gt-pts span.a { border-color: var(--accent); color: var(--accent); }
+    .gt-pts span.b { border-color: var(--women); color: var(--women); }
+    .gt-legend { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+    .gt-legend b.a { color: var(--accent); } .gt-legend b.b { color: var(--women); }
+    .gt-feeds { margin-top: 20px; font-size: 13px; color: var(--muted); }
+    .gt-feeds a { color: var(--accent); word-break: break-all; }
+    .gt-msg { color: var(--muted); padding: 40px 0; text-align: center; }
+  </style>
+</head>
+<body>
+  <main class="gt">
+    <a id="back" class="gt-back" href="./">‹ Fistball Live</a>
+    <div id="root"><div class="gt-msg">Loading…</div></div>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, onSnapshot }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // Same Firebase project as index.html (public read only). FORKS: keep in sync.
+    const PROJECT = "fistball-arena";
+    const app = initializeApp({
+      apiKey: "AIzaSyAca__YTy_Y6tlX62jJ6aK_qHhJgUD4V0w",
+      authDomain: "fistball-arena.firebaseapp.com",
+      projectId: PROJECT,
+      appId: "1:261226374717:web:d267cc2b02175e85bf2c54",
+    });
+    const db = getFirestore(app);
+
+    const q = new URLSearchParams(location.search);
+    const eid = q.get("event"), gid = q.get("game");
+    const root = document.getElementById("root");
+    document.getElementById("back").href = eid ? `./?event=${encodeURIComponent(eid)}` : "./";
+
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const num = (v) => (Number.isFinite(+v) ? +v : 0);
+    let eventName = "", last;
+
+    function render(r) {
+      last = r;
+      if (!r) { root.innerHTML = `<div class="gt-msg">Game not found.</div>`; return; }
+      const sets = (r.sets || []).map((s) => ({ a: num(s.a), b: num(s.b), seq: String(s.seq || "") }));
+      const finished = r.status === "Finished";
+      const live = r.status === "In progress" || r.status === "Starting";
+      // liveSets* (newer Arena) count only completed sets; setsA/B also count the set being played.
+      const hasLive = !finished && r.liveSetsA != null;
+      const sA = num(hasLive ? r.liveSetsA : r.setsA), sB = num(hasLive ? r.liveSetsB : r.setsB);
+      const nameA = r.teamAShort || r.teamA || "Team A", nameB = r.teamBShort || r.teamB || "Team B";
+      document.title = `${nameA} – ${nameB} · Fistball Live`;
+      const cur = live && num(r.liveSet) && r.livePointsA != null
+        ? `Set ${num(r.liveSet)} · ${num(r.livePointsA)}:${num(r.livePointsB)}` : "";
+
+      const setCard = (s, i) => {
+        let a = 0, b = 0;
+        const chips = [...s.seq].map((w) => {
+          if (w === "A") a++; else b++;
+          return `<span class="${w === "A" ? "a" : "b"}">${a}:${b}</span>`;
+        }).join("");
+        const tot = Math.max(s.a + s.b, 1);
+        return `<div class="gt-set">
+          <div class="gt-set-h"><span>${i + 1}. Set</span><span class="sc">${s.a}:${s.b}</span></div>
+          <div class="gt-bar"><i style="width:${(100 * s.a) / tot}%"></i><i class="b" style="width:${(100 * s.b) / tot}%"></i></div>
+          ${chips ? `<div class="gt-pts">${chips}</div>` : ""}
+        </div>`;
+      };
+
+      const overlay = new URL(`overlay.html?event=${encodeURIComponent(eid)}&game=${encodeURIComponent(gid)}`, location.href).href;
+      const json = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/events/${encodeURIComponent(eid)}/results/${encodeURIComponent(gid)}`;
+
+      root.innerHTML = `
+        ${eventName ? `<div class="gt-event">${esc(eventName)}</div>` : ""}
+        <div class="gt-chips">
+          ${[r.date, r.time, r.court ? `Court ${r.court}` : "", r.nr ? `Game ${r.nr}` : "", r.category, r.round, r.bestOf ? `Best of ${r.bestOf}` : ""]
+            .filter(Boolean).map((x) => `<span class="gt-chip">${esc(x)}</span>`).join("")}
+          <span class="gt-chip ${live ? "live" : ""}">${esc(r.status || "Not Started")}</span>
+        </div>
+        <div class="gt-score">
+          <div class="gt-team ${finished && sA > sB ? "win" : ""}"><span class="lbl">Team A</span>${esc(nameA)}</div>
+          <div class="gt-sets"><small>SETS</small>${sA} : ${sB}${cur ? `<span class="cur">${esc(cur)}</span>` : ""}</div>
+          <div class="gt-team b ${finished && sB > sA ? "win" : ""}"><span class="lbl">Team B</span>${esc(nameB)}</div>
+        </div>
+        ${sets.length
+          ? `<p class="gt-legend">Point by point — <b class="a">${esc(nameA)}</b> · <b class="b">${esc(nameB)}</b></p>${sets.map(setCard).join("")}`
+          : `<div class="gt-msg">No points yet.</div>`}
+        <div class="gt-feeds">
+          <div>📺 Scoreboard overlay (OBS/vMix): <a href="${esc(overlay)}">${esc(overlay)}</a></div>
+          <div>🔗 Data (JSON): <a href="${esc(json)}">${esc(json)}</a></div>
+        </div>`;
+    }
+
+    if (!eid || !gid) {
+      root.innerHTML = `<div class="gt-msg">Open a game from Fistball Live.</div>`;
+    } else {
+      onSnapshot(doc(db, "events", eid, "results", gid),
+        (d) => render(d.exists() ? d.data() : null),
+        (e) => { console.warn("result unavailable:", e); root.innerHTML = `<div class="gt-msg">Game unavailable.</div>`; });
+      onSnapshot(doc(db, "public", "event_" + eid), (b) => { eventName = b.exists() ? b.data().name || "" : ""; if (last) render(last); },
+        (e) => console.warn("event info unavailable:", e));
+    }
+  </script>
+</body>
+</html>

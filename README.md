@@ -30,6 +30,20 @@ background, for TV/streaming — add it as a *Browser source* in OBS/vMix:
 - `overlay.html?event=<eventId>&game=<gameId>` — one specific game
 - optional `&pos=tl|tr|bl|br` (corner) and `&bg=00ff00` (chroma background)
 
+`game.html?event=<eventId>&game=<gameId>` is a point-by-point live ticker for
+one game (linked from each started match card).
+
+**Data feed (JSON)** — every game's result is public and can be polled by
+graphics tools (vMix data source, Singular, H2R…) through the Firestore REST API:
+
+- one game: `https://firestore.googleapis.com/v1/projects/fistball-arena/databases/(default)/documents/events/<eventId>/results/<gameId>`
+- all games: `…/events/<eventId>/results`
+
+Useful fields: `teamA`/`teamB` (+`teamAShort`/`teamBShort`), `status`,
+`liveSet`, `liveSetsA`/`liveSetsB` (completed sets won), `livePointsA`/`livePointsB`
+(current set), `sets[]` (`a`, `b`, `seq` = point order "AABA…"), `court`, `nr`,
+`category`, `round`, `bestOf`.
+
 Arena shows ready-made links in Settings → Publish to Fistball Live (per court)
 and on each game report (📺 Broadcast link).
 

@@ -133,7 +133,7 @@
         if (eid) {
           resultsUnsub = onSnapshot(
             collection(db, "events", eid, "results"),
-            (rs) => window.applyFsResults && window.applyFsResults(rs.docs.map((d) => d.data())),
+            (rs) => window.applyFsResults && window.applyFsResults(rs.docs.map((d) => ({ id: d.id, ...d.data() }))),
             (err) => console.warn("Firestore results unavailable:", err)
           );
           infoUnsub = onSnapshot(

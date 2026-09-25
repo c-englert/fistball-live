@@ -755,3 +755,7 @@ body.embedded .update-toast { display: none !important; }
   border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer;
 }
 .install-ghost:hover { color: var(--text); }
+
+/* Link from a match card to its point-by-point ticker (game.html) */
+.ticker-link { display: block; margin-top: 8px; font-size: 12px; font-weight: 700; text-align: right; color: var(--accent, #6c5ce7); text-decoration: none; }
+.ticker-link:hover { text-decoration: underline; }
