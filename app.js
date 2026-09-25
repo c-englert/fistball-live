@@ -698,7 +698,8 @@ function matchCard(m) {
   const aWin = isFinished(m) && m.setsA > m.setsB;
   const bWin = isFinished(m) && m.setsB > m.setsA;
   const live = isLive(m);
-  const showSets = (m.setsA + m.setsB > 0) || m.sets.length > 0;
+  const showSets = (m.setsA + m.setsB > 0) || m.sets.length > 0 || !!m.cur;
+  const curPts = (v) => (m.cur ? `<div class="cur-pts" title="Current set">${v}</div>` : "");
 
   const setBadges = m.sets.length
     ? `<div class="setline"><div class="set-scores">${m.sets.map(([a, b]) =>
@@ -719,12 +720,12 @@ function matchCard(m) {
     </div>
     <div class="match-row ${aWin ? "winner" : ""}">
       <div class="side"><span class="flag">${flagFor(m.teamA)}</span><span class="name">${esc(teamLabel(m.teamA, m.teamAShort))}</span></div>
-      ${showSets ? `<div class="big-sets ${aWin ? "win" : ""}">${m.setsA}</div>` : ""}
+      ${showSets ? `<div class="big-sets ${aWin ? "win" : ""}">${m.setsA}</div>` : ""}${curPts(m.cur && m.cur[0])}
     </div>
     <div class="match-divider"></div>
     <div class="match-row ${bWin ? "winner" : ""}">
       <div class="side"><span class="flag">${flagFor(m.teamB)}</span><span class="name">${esc(teamLabel(m.teamB, m.teamBShort))}</span></div>
-      ${showSets ? `<div class="big-sets ${bWin ? "win" : ""}">${m.setsB}</div>` : ""}
+      ${showSets ? `<div class="big-sets ${bWin ? "win" : ""}">${m.setsB}</div>` : ""}${curPts(m.cur && m.cur[1])}
     </div>
     ${setBadges}
     ${tickerLink(m)}
@@ -1219,8 +1220,21 @@ function applyData(csvText) {
 }
 
 // Build one match object from a Firestore `results` doc (Fistball Arena).
+// A fistball set ends at 11 with a 2-point lead, or at 15.
+const setOver = ([a, b]) => (Math.max(a, b) >= 11 && Math.abs(a - b) >= 2) || Math.max(a, b) >= 15;
+
 function fsRowToMatch(d) {
   if (!d || !d.nr || !d.teamA || !d.teamB || !d.category) return null;
+  // While a game is on, the set being played is NOT counted as won: it's split
+  // off as `cur` (shown as live points, like the broadcast overlay).
+  let sets = Array.isArray(d.sets) ? d.sets.map((p) => Array.isArray(p) ? [num(p[0]), num(p[1])] : [num(p.a), num(p.b)]) : [];
+  const status = d.status || "Not Started";
+  let setsA = num(d.setsA), setsB = num(d.setsB), cur = null;
+  if (status !== "Finished" && sets.length) {
+    if (!setOver(sets[sets.length - 1])) cur = sets.pop();
+    setsA = sets.filter(([a, b]) => a > b).length;
+    setsB = sets.filter(([a, b]) => b > a).length;
+  }
   return {
     id: d.id || "",
     day: d.date || "", time: d.time || "", nr: num(d.nr), court: d.court || "",
@@ -1228,10 +1242,9 @@ function fsRowToMatch(d) {
     teamA: cleanTeam(d.teamA, d.category), teamB: cleanTeam(d.teamB, d.category),
     teamAShort: (d.teamAShort || "").trim(), teamBShort: (d.teamBShort || "").trim(),
     round: d.round || "", category: d.category, group: (d.group || "").toString().trim(), bestOf: num(d.bestOf),
-    setsA: num(d.setsA), setsB: num(d.setsB),
+    setsA, setsB, cur,
     pointsA: num(d.pointsA), pointsB: num(d.pointsB),
-    sets: Array.isArray(d.sets) ? d.sets.map((p) => Array.isArray(p) ? [num(p[0]), num(p[1])] : [num(p.a), num(p.b)]) : [],
-    status: d.status || "Not Started",
+    sets, status,
     cards: Array.isArray(d.cards) ? d.cards : [],
   };
 }
