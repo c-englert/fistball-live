@@ -93,8 +93,10 @@
       if (!r) { bug.innerHTML = `<div class="msg">No game${court ? ` on court ${esc(court)}` : ""}</div>`; return; }
       const sets = (r.sets || []).map((s) => (Array.isArray(s) ? { a: num(s[0]), b: num(s[1]) } : { a: num(s.a), b: num(s.b) }));
       const finished = r.status === "Finished";
-      const done = finished ? sets : sets.filter(setDone);
+      // Like the súmula: every set before the last is over (the scorer moved on);
+      // the last one is over only once it reaches a set-winning score.
       const current = !finished && sets.length && !setDone(sets[sets.length - 1]) ? sets[sets.length - 1] : null;
+      const done = current ? sets.slice(0, -1) : sets;
       const won = (side) => done.filter((s) => (side === "A" ? s.a > s.b : s.b > s.a)).length;
       const sA = won("A"), sB = won("B");
       const winner = finished ? (sA > sB ? "A" : sB > sA ? "B" : null) : null;
