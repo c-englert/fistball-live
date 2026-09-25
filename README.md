@@ -21,6 +21,18 @@ Plain HTML/CSS/JS — no build step, no framework.
    Fistball Live then shows that event. You can also open a specific event with
    `?event=<eventId>`.
 
+## Broadcast overlay
+
+`overlay.html` is a live scoreboard (points & sets) with a transparent
+background, for TV/streaming — add it as a *Browser source* in OBS/vMix:
+
+- `overlay.html?event=<eventId>&court=1` — follows the game on that court
+- `overlay.html?event=<eventId>&game=<gameId>` — one specific game
+- optional `&pos=tl|tr|bl|br` (corner) and `&bg=00ff00` (chroma background)
+
+Arena shows ready-made links in Settings → Publish to Fistball Live (per court)
+and on each game report (📺 Broadcast link).
+
 ## How it works
 
 - Reads `public/live` to learn which event is on air, `public/event_{id}` for

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fistball Scoreboard</title>
+  <!--
+    Broadcast scoreboard overlay (points & sets), live from Fistball Arena.
+    Add as a Browser source in OBS / vMix (e.g. 1920×1080) — background is
+    transparent. Public, no login.
+
+      overlay.html?event=EID&court=1   follows the game on court 1
+                                       (in progress → just finished → next up)
+      overlay.html?event=EID&game=ID   one specific game
+      &pos=tl|tr|bl|br                 corner (default tl)
+      &bg=00ff00                       solid background (chroma key) instead of transparent
+    Without ?event it follows the event currently published to Fistball Live.
+  -->
+  <style>
+    :root {
+      --panel: rgba(11, 18, 32, 0.92);
+      --head: #3a2d6b;
+      --sets: #ffd23f;
+      --text: #fff;
+      --muted: rgba(255, 255, 255, 0.6);
+    }
+    html, body { margin: 0; background: transparent; font-family: "Helvetica Neue", Arial, sans-serif; color: var(--text); }
+    .bug { position: fixed; margin: 40px; min-width: 460px; font-variant-numeric: tabular-nums; }
+    .tl { top: 0; left: 0; } .tr { top: 0; right: 0; } .bl { bottom: 0; left: 0; } .br { bottom: 0; right: 0; }
+    .hd { background: var(--head); font-size: 16px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+          padding: 6px 14px; display: flex; justify-content: space-between; gap: 16px; border-radius: 8px 8px 0 0; }
+    .hd .state { color: var(--sets); }
+    .row { display: flex; align-items: stretch; background: var(--panel); border-top: 1px solid rgba(255,255,255,.08); }
+    .row:last-child { border-radius: 0 0 8px 8px; }
+    .name { flex: 1; font-size: 28px; font-weight: 800; padding: 8px 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 420px; }
+    .hist { display: flex; align-items: center; gap: 10px; padding: 0 10px; font-size: 20px; color: var(--muted); }
+    .hist .w { color: var(--text); font-weight: 700; }
+    .sets { width: 52px; display: grid; place-items: center; font-size: 30px; font-weight: 900; background: var(--sets); color: #111; }
+    .pts { width: 64px; display: grid; place-items: center; font-size: 34px; font-weight: 900; }
+    .row.win .name::after { content: " ◀"; color: var(--sets); font-size: 20px; }
+    .msg { font-size: 18px; background: var(--panel); padding: 10px 14px; border-radius: 8px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div id="bug" class="bug tl"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, doc, onSnapshot }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // Same Firebase project as index.html (public read only). FORKS: keep in sync.
+    const app = initializeApp({
+      apiKey: "AIzaSyAca__YTy_Y6tlX62jJ6aK_qHhJgUD4V0w",
+      authDomain: "fistball-arena.firebaseapp.com",
+      projectId: "fistball-arena",
+      appId: "1:261226374717:web:d267cc2b02175e85bf2c54",
+    });
+    const db = getFirestore(app);
+
+    const q = new URLSearchParams(location.search);
+    const gameId = q.get("game");
+    const court = q.get("court");
+    const bug = document.getElementById("bug");
+    bug.className = "bug " + (["tl", "tr", "bl", "br"].includes(q.get("pos")) ? q.get("pos") : "tl");
+    if (q.get("bg")) document.body.style.background = "#" + q.get("bg").replace(/[^0-9a-f]/gi, "");
+
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const num = (v) => (Number.isFinite(+v) ? +v : 0);
+    const ms = (t) => (t && t.toMillis ? t.toMillis() : 0);
+    // A fistball set ends at 11 with a 2-point lead, or at 15 (cap).
+    const setDone = ({ a, b }) => (Math.max(a, b) >= 11 && Math.abs(a - b) >= 2) || Math.max(a, b) >= 15;
+    const when = (r) => {
+      const [d, m, y] = String(r.date || "").split("/").map(Number);
+      const [h, mm] = String(r.time || "").split(":").map(Number);
+      return ((y || 0) * 10000 + (m || 0) * 100 + (d || 0)) * 10000 + (h || 0) * 100 + (mm || 0);
+    };
+
+    // Court mode: the game being played there, else one that just finished
+    // (kept on air for 15 min), else the next one scheduled, else the last one.
+    function pickForCourt(list) {
+      const here = list.filter((r) => String(r.court || "") === String(court));
+      const live = here.filter((r) => r.status === "In progress" || r.status === "Starting")
+        .sort((a, b) => ms(b.updatedAt) - ms(a.updatedAt))[0];
+      if (live) return live;
+      const fin = here.filter((r) => r.status === "Finished").sort((a, b) => ms(b.updatedAt) - ms(a.updatedAt));
+      if (fin[0] && Date.now() - ms(fin[0].updatedAt) < 15 * 60000) return fin[0];
+      const next = here.filter((r) => (r.status || "Not Started") === "Not Started").sort((a, b) => when(a) - when(b))[0];
+      return next || fin[0] || null;
+    }
+
+    function render(r) {
+      if (!r) { bug.innerHTML = `<div class="msg">No game${court ? ` on court ${esc(court)}` : ""}</div>`; return; }
+      const sets = (r.sets || []).map((s) => (Array.isArray(s) ? { a: num(s[0]), b: num(s[1]) } : { a: num(s.a), b: num(s.b) }));
+      const finished = r.status === "Finished";
+      const done = finished ? sets : sets.filter(setDone);
+      const current = !finished && sets.length && !setDone(sets[sets.length - 1]) ? sets[sets.length - 1] : null;
+      const won = (side) => done.filter((s) => (side === "A" ? s.a > s.b : s.b > s.a)).length;
+      const sA = won("A"), sB = won("B");
+      const winner = finished ? (sA > sB ? "A" : sB > sA ? "B" : null) : null;
+      const setNo = current ? sets.length : done.length + 1;
+      const state = finished ? "Final" : r.status === "Not Started" || !r.status ? "Up next" : `Set ${setNo}`;
+      const cur = current || (finished || !sets.length ? null : { a: 0, b: 0 });
+      const label = [r.category, r.round].filter(Boolean).join(" · ");
+      const row = (side, name, s) => `
+        <div class="row ${winner === side ? "win" : ""}">
+          <div class="name">${esc(name)}</div>
+          <div class="hist">${done.map((x) => {
+            const me = side === "A" ? x.a : x.b, op = side === "A" ? x.b : x.a;
+            return `<span class="${me > op ? "w" : ""}">${me}</span>`;
+          }).join("")}</div>
+          <div class="sets">${s}</div>
+          ${cur ? `<div class="pts">${side === "A" ? cur.a : cur.b}</div>` : ""}
+        </div>`;
+      bug.innerHTML = `
+        <div class="hd"><span>${esc(label)}${r.bestOf ? ` · Best of ${esc(r.bestOf)}` : ""}</span><span class="state">${state}</span></div>
+        ${row("A", r.teamAShort || r.teamA || "Team A", sA)}
+        ${row("B", r.teamBShort || r.teamB || "Team B", sB)}`;
+    }
+
+    let unsub = null, courtList = null;
+    function follow(eid) {
+      if (unsub) { unsub(); unsub = null; }
+      if (!eid) { bug.innerHTML = `<div class="msg">No live event</div>`; return; }
+      if (gameId) {
+        unsub = onSnapshot(doc(db, "events", eid, "results", gameId),
+          (d) => render(d.exists() ? d.data() : null),
+          (e) => console.warn("result unavailable:", e));
+      } else if (court) {
+        unsub = onSnapshot(collection(db, "events", eid, "results"),
+          (snap) => { courtList = snap.docs.map((d) => d.data()); render(pickForCourt(courtList)); },
+          (e) => console.warn("results unavailable:", e));
+      } else {
+        bug.innerHTML = `<div class="msg">Add &amp;court=… or &amp;game=… to the link</div>`;
+      }
+    }
+
+    const eid = q.get("event");
+    if (eid) follow(eid);
+    else onSnapshot(doc(db, "public", "live"), (s) => follow(s.exists() ? s.data().eventId : null));
+    // Re-evaluate court mode periodically (the 15-min "just finished" window).
+    if (court && !gameId) setInterval(() => { if (courtList) render(pickForCourt(courtList)); }, 60000);
+  </script>
+</body>
+</html>
