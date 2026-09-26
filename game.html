@@ -22,6 +22,8 @@
                 background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 14px; }
     .gt-team { font-size: 18px; font-weight: 800; }
     .gt-team.b { text-align: right; }
+    .gt-logo { display: block; width: 56px; height: 56px; object-fit: contain; margin-bottom: 6px; }
+    .gt-team.b .gt-logo { margin-left: auto; }
     .gt-team .lbl { display: block; font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
     .gt-team.win { color: var(--win); }
     .gt-sets { text-align: center; font-size: 44px; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; }
@@ -71,7 +73,8 @@
 
     const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     const num = (v) => (Number.isFinite(+v) ? +v : 0);
-    let eventName = "", last;
+    let eventName = "", last, logos = {};
+    const logoImg = (team) => (logos[team] ? `<img class="gt-logo" src="${esc(logos[team])}" alt="" />` : "");
 
     function render(r) {
       last = r;
@@ -112,9 +115,9 @@
           <span class="gt-chip ${live ? "live" : ""}">${esc(r.status || "Not Started")}</span>
         </div>
         <div class="gt-score">
-          <div class="gt-team ${finished && sA > sB ? "win" : ""}"><span class="lbl">Team A</span>${esc(nameA)}</div>
+          <div class="gt-team ${finished && sA > sB ? "win" : ""}">${logoImg(r.teamA)}<span class="lbl">Team A</span>${esc(nameA)}</div>
           <div class="gt-sets"><small>SETS</small>${sA} : ${sB}${cur ? `<span class="cur">${esc(cur)}</span>` : ""}</div>
-          <div class="gt-team b ${finished && sB > sA ? "win" : ""}"><span class="lbl">Team B</span>${esc(nameB)}</div>
+          <div class="gt-team b ${finished && sB > sA ? "win" : ""}">${logoImg(r.teamB)}<span class="lbl">Team B</span>${esc(nameB)}</div>
         </div>
         ${sets.length
           ? `<p class="gt-legend">Point by point — <b class="a">${esc(nameA)}</b> · <b class="b">${esc(nameB)}</b></p>${sets.map(setCard).join("")}`
@@ -131,6 +134,9 @@
       onSnapshot(doc(db, "events", eid, "results", gid),
         (d) => render(d.exists() ? d.data() : null),
         (e) => { console.warn("result unavailable:", e); root.innerHTML = `<div class="gt-msg">Game unavailable.</div>`; });
+      onSnapshot(doc(db, "public", "teamlogos_" + eid),
+        (d) => { logos = d.exists() ? d.data().logos || {} : {}; if (last) render(last); },
+        (e) => console.warn("team logos unavailable:", e));
       onSnapshot(doc(db, "public", "event_" + eid), (b) => { eventName = b.exists() ? b.data().name || "" : ""; if (last) render(last); },
         (e) => console.warn("event info unavailable:", e));
     }

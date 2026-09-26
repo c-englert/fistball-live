@@ -32,6 +32,7 @@
     .hd .state { color: var(--sets); }
     .row { display: flex; align-items: stretch; background: var(--panel); border-top: 1px solid rgba(255,255,255,.08); }
     .row:last-child { border-radius: 0 0 8px 8px; }
+    .logo { width: 40px; height: 40px; object-fit: contain; align-self: center; margin-left: 10px; flex: none; }
     .name { flex: 1; font-size: 28px; font-weight: 800; padding: 8px 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 420px; }
     .hist { display: flex; align-items: center; gap: 10px; padding: 0 10px; font-size: 20px; color: var(--muted); }
     .hist .w { color: var(--text); font-weight: 700; }
@@ -89,7 +90,12 @@
       return next || fin[0] || null;
     }
 
+    // Team logos uploaded in Arena (public/teamlogos_{eid}): { [teamName]: dataUrl }.
+    let logos = {}, lastGame;
+    const logoImg = (team) => (logos[team] ? `<img class="logo" src="${esc(logos[team])}" alt="" />` : "");
+
     function render(r) {
+      lastGame = r;
       if (!r) { bug.innerHTML = `<div class="msg">No game${court ? ` on court ${esc(court)}` : ""}</div>`; return; }
       const sets = (r.sets || []).map((s) => (Array.isArray(s) ? { a: num(s[0]), b: num(s[1]) } : { a: num(s.a), b: num(s.b) }));
       const finished = r.status === "Finished";
@@ -106,6 +112,7 @@
       const label = [r.category, r.round].filter(Boolean).join(" · ");
       const row = (side, name, s) => `
         <div class="row ${winner === side ? "win" : ""}">
+          ${logoImg(side === "A" ? r.teamA : r.teamB)}
           <div class="name">${esc(name)}</div>
           <div class="hist">${done.map((x) => {
             const me = side === "A" ? x.a : x.b, op = side === "A" ? x.b : x.a;
@@ -120,9 +127,14 @@
         ${row("B", r.teamBShort || r.teamB || "Team B", sB)}`;
     }
 
-    let unsub = null, courtList = null;
+    let unsub = null, courtList = null, logosUnsub = null;
     function follow(eid) {
       if (unsub) { unsub(); unsub = null; }
+      if (logosUnsub) { logosUnsub(); logosUnsub = null; }
+      logos = {};
+      if (eid) logosUnsub = onSnapshot(doc(db, "public", "teamlogos_" + eid),
+        (d) => { logos = d.exists() ? d.data().logos || {} : {}; if (lastGame !== undefined) render(lastGame); },
+        (e) => console.warn("team logos unavailable:", e));
       if (!eid) { bug.innerHTML = `<div class="msg">No live event</div>`; return; }
       if (gameId) {
         unsub = onSnapshot(doc(db, "events", eid, "results", gameId),
