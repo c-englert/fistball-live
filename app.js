@@ -943,10 +943,13 @@ function categoryColor(cat) {
 /* ---------------------- Uniforms ---------------------- */
 // Arena stores per game which of the team's (up to two) uniforms it wears: a
 // number into state.teamKits, or — older events — a plain shirt colour.
-function resolveKit(value, teamRaw) {
+// Uniforms are keyed by team + category (a club's men's and women's teams
+// differ); older events keyed them by team name only.
+function resolveKit(value, teamRaw, category) {
   if (!value) return null;
   if (typeof value === "string") return { shirt: value, shorts: "" };
-  const k = (state.teamKits[teamRaw] || [])[value - 1];
+  const kits = state.teamKits[`${teamRaw} · ${category || ""}`] || state.teamKits[teamRaw] || [];
+  const k = kits[value - 1];
   return k && (k.shirt || k.shorts) ? { shirt: k.shirt || "", shorts: k.shorts || "", n: value } : null;
 }
 function kitSwatch(kit) {
@@ -955,7 +958,7 @@ function kitSwatch(kit) {
 }
 function kitTeam(m, side) {
   const raw = side === "A" ? m.teamARaw : m.teamBRaw;
-  const kit = resolveKit(side === "A" ? m.kitA : m.kitB, raw);
+  const kit = resolveKit(side === "A" ? m.kitA : m.kitB, raw, m.category);
   const name = side === "A" ? teamLabel(m.teamA, m.teamAShort) : teamLabel(m.teamB, m.teamBShort);
   return `<span class="uni-team">${kitSwatch(kit)}<span class="flag">${flagFor(side === "A" ? m.teamA : m.teamB)}</span>${esc(name)}${kit && kit.n ? `<span class="uni-n">Uniform ${kit.n}</span>` : ""}</span>`;
 }
