@@ -88,6 +88,8 @@ const state = {
   crossMode: localStorage.getItem("fb_cross") || "sets",
   rules: null,
   cautions: [],
+  teamKits: {},        // { [teamName]: [{shirt, shorts}, {shirt, shorts}] } from Arena
+  uniformQuery: "",
   lastUpdated: null,
 };
 
@@ -760,17 +762,23 @@ function setView(view) {
   $("tabMatches").classList.toggle("is-active", view === "matches");
   $("tabSchedule").classList.toggle("is-active", view === "schedule");
   $("tabCards").classList.toggle("is-active", view === "cards");
+  $("tabUniforms").classList.toggle("is-active", view === "uniforms");
   $("standingsView").hidden = view !== "standings";
   $("bracketView").hidden = view !== "bracket";
   $("matchesView").hidden = view !== "matches";
   $("scheduleView").hidden = view !== "schedule";
   $("cardsView").hidden = view !== "cards";
+  $("uniformsView").hidden = view !== "uniforms";
+  const activeTab = document.querySelector(".view-tab.is-active");
+  if (activeTab && activeTab.scrollIntoView) activeTab.scrollIntoView({ block: "nearest", inline: "nearest" });
   renderActiveView();
 }
 
 function renderActiveView() {
   renderWeatherStrip(); // header forecast, shown on every tab
+  renderVenue();
   if (state.activeView === "cards") return renderCards();       // tournament-wide
+  if (state.activeView === "uniforms") return renderUniforms(); // tournament-wide
   if (state.activeView === "schedule") return renderSchedule(); // tournament-wide, by time
   if (!state.activeCategory) return;
   if (state.activeView === "standings") renderStandings();
@@ -932,6 +940,82 @@ function categoryColor(cat) {
 }
 
 // Prefer the team's short/display name (set in Arena) when present.
+/* ---------------------- Uniforms ---------------------- */
+// Arena stores per game which of the team's (up to two) uniforms it wears: a
+// number into state.teamKits, or — older events — a plain shirt colour.
+function resolveKit(value, teamRaw) {
+  if (!value) return null;
+  if (typeof value === "string") return { shirt: value, shorts: "" };
+  const k = (state.teamKits[teamRaw] || [])[value - 1];
+  return k && (k.shirt || k.shorts) ? { shirt: k.shirt || "", shorts: k.shorts || "", n: value } : null;
+}
+function kitSwatch(kit) {
+  if (!kit) return "";
+  return `<span class="kit-sw" aria-hidden="true"><span style="background:${esc(kit.shirt || "transparent")}"></span><span style="background:${esc(kit.shorts || kit.shirt || "transparent")}"></span></span>`;
+}
+function kitTeam(m, side) {
+  const raw = side === "A" ? m.teamARaw : m.teamBRaw;
+  const kit = resolveKit(side === "A" ? m.kitA : m.kitB, raw);
+  const name = side === "A" ? teamLabel(m.teamA, m.teamAShort) : teamLabel(m.teamB, m.teamBShort);
+  return `<span class="uni-team">${kitSwatch(kit)}<span class="flag">${flagFor(side === "A" ? m.teamA : m.teamB)}</span>${esc(name)}${kit && kit.n ? `<span class="uni-n">Uniform ${kit.n}</span>` : ""}</span>`;
+}
+function renderUniforms() {
+  const host = $("uniforms");
+  const q = (state.uniformQuery || "").trim().toLowerCase();
+  const games = state.matches
+    .filter((m) => m.teamA && m.teamB && (m.kitA || m.kitB))
+    .filter((m) => !q || String(m.teamA).toLowerCase().includes(q) || String(m.teamB).toLowerCase().includes(q) || String(m.nr).includes(q.replace(/^#/, "")))
+    .sort((a, b) => (matchStartMs(a) || 0) - (matchStartMs(b) || 0) || String(a.court).localeCompare(String(b.court), undefined, { numeric: true }) || num(a.nr) - num(b.nr));
+  if (!games.length) {
+    host.innerHTML = `<div class="empty">${q ? "No uniforms for “" + esc(state.uniformQuery.trim()) + "”." : "Uniforms haven't been assigned yet."}</div>`;
+    return;
+  }
+  const groups = [];
+  const idx = new Map();
+  for (const m of games) {
+    const key = m.day || "—";
+    if (!idx.has(key)) { idx.set(key, groups.length); groups.push({ day: key, items: [] }); }
+    groups[idx.get(key)].items.push(m);
+  }
+  host.innerHTML = groups.map((g) => `
+    <div class="day-group">
+      <div class="day-head">${esc(dayLabelLong(g.day))}</div>
+      ${g.items.map((m) => {
+        const col = categoryColor(m.category);
+        return `
+        <div class="sch-row uni-row" style="border-left-color:${col}">
+          <div class="sch-when"><span class="sch-time">${esc(m.time || "")}</span>${m.court ? `<span class="sch-court">${esc(m.court)}</span>` : ""}</div>
+          <div class="sch-mid">
+            <div class="sch-cat" style="color:${col}"><span class="sch-dot" style="background:${col}"></span>#${esc(m.nr)} · ${esc(m.category)} · ${esc(m.round)}</div>
+            <div class="uni-teams">${kitTeam(m, "A")}${kitTeam(m, "B")}</div>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>`).join("");
+}
+
+// Called by the Firestore subscription (see index.html) with the team uniforms.
+window.applyTeamKits = function (kits) {
+  state.teamKits = kits || {};
+  if (state.activeView === "uniforms") renderUniforms();
+};
+
+/* ---------------------- Venue + directions ---------------------- */
+function renderVenue() {
+  const el = $("venue");
+  if (!el) return;
+  const address = String((state.eventInfo && state.eventInfo.address) || "").trim();
+  el.hidden = !address;
+  if (!address) { el.innerHTML = ""; return; }
+  const maps = (mode) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&travelmode=${mode}`;
+  el.innerHTML = `
+    <span class="venue-addr">📍 ${esc(address)}</span>
+    <span class="venue-links">
+      <a class="venue-btn" href="${maps("driving")}" target="_blank" rel="noopener">🚗 By car</a>
+      <a class="venue-btn" href="${maps("transit")}" target="_blank" rel="noopener">🚌 Public transport</a>
+    </span>`;
+}
+
 function teamLabel(name, short) { return (short && String(short).trim()) ? String(short).trim() : name; }
 
 function scheduleRow(m) {
@@ -1246,6 +1330,7 @@ function fsRowToMatch(d) {
     pointsA: num(d.pointsA), pointsB: num(d.pointsB),
     sets, status,
     cards: Array.isArray(d.cards) ? d.cards : [],
+    kitA: (d.kit && d.kit.A) || "", kitB: (d.kit && d.kit.B) || "",
   };
 }
 
@@ -1518,6 +1603,11 @@ $("tabSchedule").onclick = () => setView("schedule");
   if (ss) ss.oninput = (e) => { state.scheduleQuery = e.target.value; renderSchedule(); };
 }
 $("tabCards").onclick = () => setView("cards");
+$("tabUniforms").onclick = () => setView("uniforms");
+{
+  const us = $("uniformSearch");
+  if (us) us.oninput = (e) => { state.uniformQuery = e.target.value; renderUniforms(); };
+}
 $("refreshBtn").onclick = () => load(true);
 setView(state.activeView);
 

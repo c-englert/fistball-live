@@ -765,3 +765,26 @@ body.embedded .update-toast { display: none !important; }
 /* Points of the set being played (not yet counted as a set) — like the overlay */
 .cur-pts { min-width: 34px; text-align: center; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums;
   color: #111; background: var(--gold); border-radius: 6px; padding: 1px 6px; }
+
+/* ---------- Uniforms tab ---------- */
+.kit-sw { display: inline-flex; flex-direction: column; width: 14px; height: 18px; border-radius: 3px; overflow: hidden; border: 1px solid rgba(255,255,255,0.35); vertical-align: middle; margin-right: 6px; flex: none; }
+.kit-sw > span { display: block; flex: 3; }
+.kit-sw > span + span { flex: 2; border-top: 1px solid rgba(0,0,0,0.3); }
+.uni-teams { display: flex; flex-direction: column; gap: 4px; margin-top: 3px; }
+.uni-team { display: inline-flex; align-items: center; font-weight: 600; }
+.uni-n { margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--muted); }
+
+/* ---------- Venue + directions ---------- */
+.venue-strip { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 10px 12px; margin: 12px 0; font-size: 13px; }
+.venue-addr { min-width: 0; overflow-wrap: anywhere; }
+.venue-links { display: flex; gap: 8px; flex-wrap: wrap; }
+.venue-btn { display: inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.18); color: inherit; text-decoration: none; font-weight: 600; font-size: 12px; white-space: nowrap; }
+.venue-btn:hover { background: rgba(255,255,255,0.08); }
+
+/* Six tabs: let the bar scroll sideways on narrow phones instead of squeezing. */
+@media (max-width: 560px) {
+  .view-tabs { overflow-x: auto; scrollbar-width: none; }
+  .view-tabs::-webkit-scrollbar { display: none; }
+  .view-tab { flex: 1 0 auto; padding: 10px 12px; font-size: 13px; }
+}
+.venue-strip[hidden] { display: none; }
