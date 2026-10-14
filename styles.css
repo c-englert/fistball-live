@@ -767,9 +767,9 @@ body.embedded .update-toast { display: none !important; }
   color: #111; background: var(--gold); border-radius: 6px; padding: 1px 6px; }
 
 /* ---------- Uniforms tab ---------- */
-.kit-sw { display: inline-flex; flex-direction: column; width: 14px; height: 18px; border-radius: 3px; overflow: hidden; border: 1px solid rgba(255,255,255,0.35); vertical-align: middle; margin-right: 6px; flex: none; }
-.kit-sw > span { display: block; flex: 3; }
-.kit-sw > span + span { flex: 2; border-top: 1px solid rgba(0,0,0,0.3); }
+.kit-sw { display: inline-flex; width: 18px; height: 18px; border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.35); vertical-align: middle; margin-right: 6px; flex: none; }
+.kit-sw > span { display: block; flex: 1; }
+.kit-sw > span + span { border-left: 1px solid rgba(0,0,0,0.2); }
 .uni-teams { display: flex; flex-direction: column; gap: 4px; margin-top: 3px; }
 .uni-team { display: inline-flex; align-items: center; font-weight: 600; }
 .uni-n { margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--muted); }

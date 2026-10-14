@@ -88,7 +88,7 @@ const state = {
   crossMode: localStorage.getItem("fb_cross") || "sets",
   rules: null,
   cautions: [],
-  teamKits: {},        // { [teamName]: [{shirt, shorts}, {shirt, shorts}] } from Arena
+  teamKits: {},        // { ["team · category"]: [{colors:[hex…]}, {colors:[hex…]}] } from Arena
   uniformQuery: "",
   lastUpdated: null,
 };
@@ -947,14 +947,16 @@ function categoryColor(cat) {
 // differ); older events keyed them by team name only.
 function resolveKit(value, teamRaw, category) {
   if (!value) return null;
-  if (typeof value === "string") return { shirt: value, shorts: "" };
+  if (typeof value === "string") return { colors: [value] };
   const kits = state.teamKits[`${teamRaw} · ${category || ""}`] || state.teamKits[teamRaw] || [];
   const k = kits[value - 1];
-  return k && (k.shirt || k.shorts) ? { shirt: k.shirt || "", shorts: k.shorts || "", n: value } : null;
+  // Jersey colours (up to 3); older uniforms were { shirt, shorts } — shorts unused.
+  const colors = k ? (Array.isArray(k.colors) ? k.colors.filter(Boolean) : k.shirt ? [k.shirt] : []) : [];
+  return colors.length ? { colors, n: value } : null;
 }
 function kitSwatch(kit) {
   if (!kit) return "";
-  return `<span class="kit-sw" aria-hidden="true"><span style="background:${esc(kit.shirt || "transparent")}"></span><span style="background:${esc(kit.shorts || kit.shirt || "transparent")}"></span></span>`;
+  return `<span class="kit-sw" aria-hidden="true">${kit.colors.map((c) => `<span style="background:${esc(c)}"></span>`).join("")}</span>`;
 }
 function kitTeam(m, side) {
   const raw = side === "A" ? m.teamARaw : m.teamBRaw;
