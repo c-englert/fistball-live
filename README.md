@@ -17,9 +17,11 @@ Plain HTML/CSS/JS — no build step, no framework.
    (apiKey / authDomain / projectId / appId — client-side, not secret).
 2. Serve the folder as static files (GitHub Pages, Netlify, or any web server).
    For local testing: `python3 -m http.server` then open the printed URL.
-3. In Arena, use **Show on Live** on an event to set the `public/live` pointer;
-   Fistball Live then shows that event. You can also open a specific event with
-   `?event=<eventId>`.
+3. In Arena, use **Publish to Live** on an event: its `public/event_<id>` doc
+   gets `onLive: true`. Several events can be on air at once — spectators pick
+   one in a switcher above the categories (remembered per device). The legacy
+   single `public/live` pointer is still honoured. You can also open a specific
+   event with `?event=<eventId>`.
 
 ## Broadcast overlay
 

@@ -1357,6 +1357,17 @@ window.applyLivePointer = function (p) {
   remerge();
 };
 
+// Event picker, shown when more than one event is on Fistball Live.
+window.renderEventSwitcher = function (events, currentId) {
+  const el = $("eventSwitch");
+  if (!el) return;
+  const list = events || [];
+  el.hidden = list.length < 2;
+  el.innerHTML = list.length < 2 ? "" : list.map((e) =>
+    `<button class="event-pill ${e.eventId === currentId ? "is-active" : ""}" data-eid="${esc(e.eventId)}">${esc(e.name || "Event")}${e.dates ? `<span class="event-pill-sub">${esc(e.dates)}</span>` : ""}</button>`).join("");
+  el.querySelectorAll(".event-pill").forEach((b) => { b.onclick = () => window.selectLiveEvent && window.selectLiveEvent(b.dataset.eid); });
+};
+
 // Public event info from Arena: name, place, dates, startsAt, logos.
 window.applyEventInfo = function (b) {
   state.eventInfo = b || null;

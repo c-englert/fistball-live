@@ -38,6 +38,8 @@
     </div>
   </header>
 
+  <nav id="eventSwitch" class="event-switch" aria-label="Events" hidden></nav>
+
   <nav class="category-bar" aria-label="Categories">
     <div id="categoryPills" class="category-pills"></div>
   </nav>
@@ -117,7 +119,7 @@
        subscribes that event's results. Overlays the sheet by match number. -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, doc, onSnapshot }
+    import { getFirestore, collection, doc, onSnapshot, query, where }
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     try {
       // Firebase web config (client-side, NOT secret). This spectator app only
@@ -169,11 +171,49 @@
         if (window.applyLivePointer) window.applyLivePointer({ eventId: forcedEid });
         showEvent(forcedEid);
       } else {
+        // Several events can be on air (public/event_* with onLive:true) plus
+        // the legacy single pointer public/live. Spectators pick one; the
+        // choice is remembered. Default: the event running now, else the next.
+        let pointer = null, onLive = [], events = [], current = null;
+        let gotPointer = false, gotList = false;
+        const today = new Date().toISOString().slice(0, 10);
+        const select = (ev) => {
+          current = ev ? ev.eventId : null;
+          // Drop the previous event's data so it never shows under the new name.
+          if (window.applyFsResults) window.applyFsResults([]);
+          if (window.applyTeamKits) window.applyTeamKits({});
+          if (window.applyLivePointer) window.applyLivePointer(ev);
+          showEvent(current);
+          if (window.renderEventSwitcher) window.renderEventSwitcher(events, current);
+        };
+        const refresh = () => {
+          if (!gotPointer || !gotList) return;
+          events = [...onLive];
+          if (pointer && pointer.eventId && !events.some((e) => e.eventId === pointer.eventId)) events.push(pointer);
+          events.sort((a, b) => String(a.startsAt || "").localeCompare(String(b.startsAt || "")));
+          let saved = null;
+          try { saved = localStorage.getItem("fb_event"); } catch (_) {}
+          const sel = events.find((e) => e.eventId === current)
+            || events.find((e) => e.eventId === saved)
+            || events.find((e) => (e.endsAt || e.startsAt || "") >= today)
+            || events[events.length - 1] || null;
+          if ((sel ? sel.eventId : null) !== current) select(sel);
+          else {
+            if (sel && window.applyLivePointer) window.applyLivePointer(sel);
+            if (window.renderEventSwitcher) window.renderEventSwitcher(events, current);
+          }
+        };
+        window.selectLiveEvent = (eid) => {
+          try { localStorage.setItem("fb_event", eid); } catch (_) {}
+          const ev = events.find((e) => e.eventId === eid);
+          if (ev && eid !== current) select(ev);
+        };
         onSnapshot(doc(db, "public", "live"), (snap) => {
-          const data = snap.exists() ? snap.data() : null;
-          if (window.applyLivePointer) window.applyLivePointer(data);
-          showEvent(data ? data.eventId : null);
-        }, (err) => console.warn("Live pointer unavailable:", err));
+          pointer = snap.exists() ? snap.data() : null; gotPointer = true; refresh();
+        }, (err) => { console.warn("Live pointer unavailable:", err); gotPointer = true; refresh(); });
+        onSnapshot(query(collection(db, "public"), where("onLive", "==", true)), (snap) => {
+          onLive = snap.docs.map((d) => d.data()).filter((v) => v.eventId); gotList = true; refresh();
+        }, (err) => { console.warn("Live events unavailable:", err); gotList = true; refresh(); });
       }
     } catch (e) {
       console.warn("Firestore init skipped:", e);

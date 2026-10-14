@@ -788,3 +788,11 @@ body.embedded .update-toast { display: none !important; }
   .view-tab { flex: 1 0 auto; padding: 10px 12px; font-size: 13px; }
 }
 .venue-strip[hidden] { display: none; }
+
+/* ---------- Event picker (several events on Live) ---------- */
+.event-switch { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; max-width: 980px; margin: 0 auto; padding: 10px 16px 0; }
+.event-switch::-webkit-scrollbar { display: none; }
+.event-switch[hidden] { display: none; }
+.event-pill { flex: none; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-elev); color: var(--muted); font-weight: 700; font-size: 13px; cursor: pointer; text-align: left; }
+.event-pill.is-active { background: var(--bg-elev-2); color: var(--text); border-color: rgba(255,255,255,0.35); }
+.event-pill-sub { font-size: 11px; font-weight: 500; opacity: 0.8; }
