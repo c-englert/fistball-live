@@ -734,11 +734,14 @@ function matchCard(m) {
   </div>`;
 }
 
-// Point-by-point page for a game (game.html) — once it has started.
+// Game page (game.html): point by point once started; before that, the
+// starting five as soon as the referee has filled it in.
 function tickerLink(m) {
   const eid = state.livePointer && state.livePointer.eventId;
-  if (!eid || !m.id || m.status === "Not Started") return "";
-  return `<a class="ticker-link" href="game.html?event=${encodeURIComponent(eid)}&game=${encodeURIComponent(m.id)}">Point by point ›</a>`;
+  if (!eid || !m.id) return "";
+  const href = `game.html?event=${encodeURIComponent(eid)}&game=${encodeURIComponent(m.id)}`;
+  if (m.status !== "Not Started") return `<a class="ticker-link" href="${href}">Point by point ›</a>`;
+  return m.hasStartingFive ? `<a class="ticker-link" href="${href}#starting5">Starting 5 ›</a>` : "";
 }
 
 function esc(s) {
@@ -1336,6 +1339,7 @@ function fsRowToMatch(d) {
     sets, status,
     cards: Array.isArray(d.cards) ? d.cards : [],
     kitA: (d.kit && d.kit.A) || "", kitB: (d.kit && d.kit.B) || "",
+    hasStartingFive: !!d.startingFive && Object.values(d.startingFive).some((f) => f && Object.keys(f).length),
   };
 }
 
