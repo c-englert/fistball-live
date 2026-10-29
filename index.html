@@ -52,6 +52,8 @@
       <button id="tabSchedule" class="view-tab" role="tab">Schedule</button>
       <button id="tabCards" class="view-tab" role="tab">Cards</button>
       <button id="tabUniforms" class="view-tab" role="tab">Uniforms</button>
+      <button id="tabTraining" class="view-tab" role="tab" hidden>Training</button>
+      <button id="tabVenueMap" class="view-tab" role="tab" hidden>Venue Map</button>
     </div>
 
     <section id="banner" class="banner" hidden></section>
@@ -79,6 +81,14 @@
     <section id="uniformsView" class="view" hidden>
       <div class="sch-search-bar"><input id="uniformSearch" class="game-search" type="search" placeholder="Search your team…" aria-label="Search team" /></div>
       <div id="uniforms"></div>
+    </section>
+
+    <section id="trainingView" class="view" hidden>
+      <div id="training"></div>
+    </section>
+
+    <section id="venueMapView" class="view" hidden>
+      <div id="venueMap"></div>
     </section>
 
     <section id="scheduleView" class="view" hidden>
@@ -119,12 +129,13 @@
        subscribes that event's results. Overlays the sheet by match number. -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, doc, onSnapshot, query, where }
+    import { getFirestore, collection, doc, onSnapshot, query, where, updateDoc }
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     try {
       // Firebase web config (client-side, NOT secret). This spectator app only
-      // reads PUBLIC docs (public/live, public/event_*, public/teamkits_*, events/*/results), so no
-      // login is needed. FORKS: replace these four values with your own Firebase
+      // reads PUBLIC docs (public/live, public/event_*, public/teamkits_*, public/venuemap_*,
+      // events/*/results, events/*/training), so no
+      // login is needed (booking a training slot is the one public write). FORKS: replace these four values with your own Firebase
       // project's config — it must be the SAME project the Arena app writes to.
       const app = initializeApp({
         apiKey: "AIzaSyAca__YTy_Y6tlX62jJ6aK_qHhJgUD4V0w",
@@ -133,14 +144,31 @@
         appId: "1:261226374717:web:d267cc2b02175e85bf2c54",
       });
       const db = getFirestore(app);
-      let resultsUnsub = null, infoUnsub = null, kitsUnsub = null;
+      let resultsUnsub = null, infoUnsub = null, kitsUnsub = null, trainingUnsub = null, mapUnsub = null, curEid = null;
+      // Book a free training slot: only an empty `team` may be filled (firestore.rules).
+      window.bookTraining = (slotId, team) => updateDoc(doc(db, "events", curEid, "training", slotId), { team, bookedAt: Date.now() });
 
       // Show a specific event's results + info (used by both the pointer and ?event=).
       function showEvent(eid) {
         if (resultsUnsub) { resultsUnsub(); resultsUnsub = null; }
         if (infoUnsub) { infoUnsub(); infoUnsub = null; }
         if (kitsUnsub) { kitsUnsub(); kitsUnsub = null; }
+        if (trainingUnsub) { trainingUnsub(); trainingUnsub = null; }
+        if (mapUnsub) { mapUnsub(); mapUnsub = null; }
+        curEid = eid || null;
+        window.applyTraining && window.applyTraining([]);
+        window.applyVenueMap && window.applyVenueMap(null);
         if (eid) {
+          trainingUnsub = onSnapshot(
+            collection(db, "events", eid, "training"),
+            (s) => window.applyTraining && window.applyTraining(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+            (err) => console.warn("Training slots unavailable:", err)
+          );
+          mapUnsub = onSnapshot(
+            doc(db, "public", "venuemap_" + eid),
+            (m) => window.applyVenueMap && window.applyVenueMap(m.exists() ? m.data() : null),
+            (err) => console.warn("Venue map unavailable:", err)
+          );
           kitsUnsub = onSnapshot(
             doc(db, "public", "teamkits_" + eid),
             (k) => window.applyTeamKits && window.applyTeamKits(k.exists() ? k.data().kits || {} : {}),

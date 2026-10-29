@@ -766,12 +766,16 @@ function setView(view) {
   $("tabSchedule").classList.toggle("is-active", view === "schedule");
   $("tabCards").classList.toggle("is-active", view === "cards");
   $("tabUniforms").classList.toggle("is-active", view === "uniforms");
+  $("tabTraining").classList.toggle("is-active", view === "training");
+  $("tabVenueMap").classList.toggle("is-active", view === "venuemap");
   $("standingsView").hidden = view !== "standings";
   $("bracketView").hidden = view !== "bracket";
   $("matchesView").hidden = view !== "matches";
   $("scheduleView").hidden = view !== "schedule";
   $("cardsView").hidden = view !== "cards";
   $("uniformsView").hidden = view !== "uniforms";
+  $("trainingView").hidden = view !== "training";
+  $("venueMapView").hidden = view !== "venuemap";
   const activeTab = document.querySelector(".view-tab.is-active");
   if (activeTab && activeTab.scrollIntoView) activeTab.scrollIntoView({ block: "nearest", inline: "nearest" });
   renderActiveView();
@@ -782,6 +786,8 @@ function renderActiveView() {
   renderVenue();
   if (state.activeView === "cards") return renderCards();       // tournament-wide
   if (state.activeView === "uniforms") return renderUniforms(); // tournament-wide
+  if (state.activeView === "training") return renderTraining(); // tournament-wide
+  if (state.activeView === "venuemap") return renderVenueMap(); // tournament-wide
   if (state.activeView === "schedule") return renderSchedule(); // tournament-wide, by time
   if (!state.activeCategory) return;
   if (state.activeView === "standings") renderStandings();
@@ -1001,6 +1007,89 @@ function renderUniforms() {
       }).join("")}
     </div>`).join("");
 }
+
+/* ---------------------- Training & venue map ---------------------- */
+// Training slots come from Arena (events/{eid}/training); anyone books a free
+// one by typing the team name. The venue map is an image or PDF (data URL).
+state.training = [];
+state.venueMap = null;
+function trainingDayLabel(iso) {
+  const d = new Date(iso + "T12:00:00");
+  return isNaN(d) ? iso : d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+}
+function renderTraining() {
+  const host = $("training");
+  const slots = [...state.training].sort((a, b) => `${a.date} ${a.start} ${a.place}`.localeCompare(`${b.date} ${b.start} ${b.place}`, undefined, { numeric: true }));
+  if (!slots.length) { host.innerHTML = `<div class="empty">No training times published yet.</div>`; return; }
+  const days = [];
+  for (const s of slots) {
+    if (!days.length || days[days.length - 1].date !== s.date) days.push({ date: s.date, items: [] });
+    days[days.length - 1].items.push(s);
+  }
+  host.innerHTML = `<p class="tr-hint">Tap <b>Book</b> on a free time and enter your team name.</p>` + days.map((g) => `
+    <div class="day-group">
+      <div class="day-head">${esc(trainingDayLabel(g.date))}</div>
+      ${g.items.map((s) => `
+        <div class="sch-row tr-row ${s.team ? "is-booked" : ""}">
+          <div class="sch-when"><span class="sch-time">${esc(s.start)}–${esc(s.end)}</span>${s.place ? `<span class="sch-court">${esc(s.place)}</span>` : ""}</div>
+          <div class="sch-mid">${s.team
+            ? `<span class="tr-team"><span class="flag">${flagFor(s.team)}</span>${esc(s.team)}</span>`
+            : `<span class="tr-free">Free</span>`}</div>
+          ${s.team ? "" : `<button class="tr-book" data-slot="${esc(s.id)}">Book</button>`}
+        </div>`).join("")}
+    </div>`).join("");
+  host.querySelectorAll(".tr-book").forEach((b) => (b.onclick = () => bookSlot(b.dataset.slot)));
+}
+async function bookSlot(id) {
+  const s = state.training.find((x) => x.id === id);
+  if (!s || !window.bookTraining) return;
+  const team = (window.prompt(`Book ${s.start}–${s.end}${s.place ? " · " + s.place : ""} (${trainingDayLabel(s.date)})\n\nTeam name:`, localStorage.getItem("fb_training_team") || "") || "").trim().slice(0, 60);
+  if (!team) return;
+  try {
+    await window.bookTraining(id, team);
+    localStorage.setItem("fb_training_team", team);
+  } catch (e) {
+    alert("Sorry — this time was just booked by another team. Please pick another one.");
+  }
+}
+function renderVenueMap() {
+  const host = $("venueMap");
+  const m = state.venueMap;
+  if (!m || !m.data) { host.innerHTML = `<div class="empty">No venue map published yet.</div>`; return; }
+  if (m.kind === "pdf") {
+    if (!state.venueMapUrl) {
+      try {
+        const bin = atob(m.data.split(",")[1] || "");
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        state.venueMapUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      } catch (_) { state.venueMapUrl = ""; }
+    }
+    host.innerHTML = `<a class="vm-open" href="${state.venueMapUrl}" target="_blank" rel="noopener">Open venue map (PDF) ↗</a>
+      <iframe class="vm-pdf" src="${state.venueMapUrl}" title="Venue map"></iframe>`;
+    return;
+  }
+  host.innerHTML = `<a href="${m.data}" target="_blank" rel="noopener" class="vm-img-link"><img class="vm-img" src="${m.data}" alt="Venue map" /></a>
+    <p class="tr-hint">Tap the map to open it full size and zoom.</p>`;
+  // Data-URL links are blocked as top-level navigation in some browsers — open a blob instead.
+  const a = host.querySelector(".vm-img-link");
+  a.onclick = (e) => {
+    e.preventDefault();
+    const w = window.open();
+    if (w) { w.document.title = "Venue map"; w.document.body.style.margin = "0"; w.document.body.innerHTML = `<img src="${m.data}" style="width:100%;height:auto;display:block">`; }
+  };
+}
+window.applyTraining = function (list) {
+  state.training = list || [];
+  $("tabTraining").hidden = !state.training.length;
+  if (state.activeView === "training") renderTraining();
+};
+window.applyVenueMap = function (m) {
+  if (state.venueMapUrl) { URL.revokeObjectURL(state.venueMapUrl); state.venueMapUrl = null; }
+  state.venueMap = m && m.data ? m : null;
+  $("tabVenueMap").hidden = !state.venueMap;
+  if (state.activeView === "venuemap") renderVenueMap();
+};
 
 // Called by the Firestore subscription (see index.html) with the team uniforms.
 window.applyTeamKits = function (kits) {
@@ -1623,6 +1712,8 @@ $("tabSchedule").onclick = () => setView("schedule");
 }
 $("tabCards").onclick = () => setView("cards");
 $("tabUniforms").onclick = () => setView("uniforms");
+$("tabTraining").onclick = () => setView("training");
+$("tabVenueMap").onclick = () => setView("venuemap");
 {
   const us = $("uniformSearch");
   if (us) us.oninput = (e) => { state.uniformQuery = e.target.value; renderUniforms(); };
