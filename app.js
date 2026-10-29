@@ -1079,15 +1079,70 @@ function renderVenueMap() {
     if (w) { w.document.title = "Venue map"; w.document.body.style.margin = "0"; w.document.body.innerHTML = `<img src="${m.data}" style="width:100%;height:auto;display:block">`; }
   };
 }
+/* ---------------------- Extra tabs (+ / −) ---------------------- */
+// Spectators see Standings · Bracket · Matches · Schedule. The more technical
+// tabs stay hidden until the viewer adds them with "+" (remembered on this
+// device); "−" appears once all are shown and hides them again.
+const EXTRA_TABS = [
+  { view: "cards", id: "tabCards", label: "Cards", avail: () => true },
+  { view: "uniforms", id: "tabUniforms", label: "Uniforms", avail: () => true },
+  { view: "training", id: "tabTraining", label: "Training", avail: () => state.training.length > 0 },
+  { view: "venuemap", id: "tabVenueMap", label: "Venue Map", avail: () => !!state.venueMap },
+];
+state.extraTabs = (() => { try { return JSON.parse(localStorage.getItem("fb_extra_tabs") || "[]"); } catch (_) { return []; } })();
+function saveExtraTabs() { try { localStorage.setItem("fb_extra_tabs", JSON.stringify(state.extraTabs)); } catch (_) {} }
+function refreshTabs() {
+  const avail = EXTRA_TABS.filter((t) => t.avail());
+  for (const t of EXTRA_TABS) $(t.id).hidden = !(t.avail() && state.extraTabs.includes(t.view));
+  const hiddenOnes = avail.filter((t) => !state.extraTabs.includes(t.view));
+  const more = $("tabMore");
+  more.hidden = !avail.length;
+  more.textContent = hiddenOnes.length ? "+" : "−";
+  more.title = hiddenOnes.length ? "Show more tabs" : "Hide the extra tabs";
+}
+function closeMoreMenu() { const m = $("moreMenu"); if (m) m.remove(); }
+function enableExtra(view) {
+  if (!state.extraTabs.includes(view)) state.extraTabs.push(view);
+  saveExtraTabs(); closeMoreMenu(); refreshTabs(); setView(view);
+}
+$("tabMore").onclick = (e) => {
+  e.stopPropagation();
+  if ($("moreMenu")) return closeMoreMenu();
+  const hiddenOnes = EXTRA_TABS.filter((t) => t.avail() && !state.extraTabs.includes(t.view));
+  if (!hiddenOnes.length) {
+    state.extraTabs = []; saveExtraTabs(); refreshTabs();
+    if (EXTRA_TABS.some((t) => t.view === state.activeView)) setView("standings");
+    return;
+  }
+  if (hiddenOnes.length === 1) return enableExtra(hiddenOnes[0].view);
+  const r = $("tabMore").getBoundingClientRect();
+  const menu = document.createElement("div");
+  menu.id = "moreMenu";
+  menu.className = "more-menu";
+  menu.style.top = `${r.bottom + 6}px`;
+  menu.style.right = `${Math.max(8, window.innerWidth - r.right)}px`;
+  menu.innerHTML = hiddenOnes.map((t) => `<button data-view="${t.view}">+ ${esc(t.label)}</button>`).join("")
+    + (hiddenOnes.length > 1 ? `<button data-view="*" class="mm-all">Show all</button>` : "");
+  menu.onclick = (ev) => {
+    const v = ev.target.dataset && ev.target.dataset.view;
+    if (!v) return;
+    if (v === "*") { hiddenOnes.forEach((t) => state.extraTabs.includes(t.view) || state.extraTabs.push(t.view)); saveExtraTabs(); closeMoreMenu(); refreshTabs(); return; }
+    enableExtra(v);
+  };
+  document.body.appendChild(menu);
+};
+document.addEventListener("click", (e) => { if (!e.target.closest || !e.target.closest("#moreMenu")) closeMoreMenu(); });
+window.addEventListener("scroll", closeMoreMenu, { passive: true });
+
 window.applyTraining = function (list) {
   state.training = list || [];
-  $("tabTraining").hidden = !state.training.length;
+  refreshTabs();
   if (state.activeView === "training") renderTraining();
 };
 window.applyVenueMap = function (m) {
   if (state.venueMapUrl) { URL.revokeObjectURL(state.venueMapUrl); state.venueMapUrl = null; }
   state.venueMap = m && m.data ? m : null;
-  $("tabVenueMap").hidden = !state.venueMap;
+  refreshTabs();
   if (state.activeView === "venuemap") renderVenueMap();
 };
 
@@ -1719,6 +1774,9 @@ $("tabVenueMap").onclick = () => setView("venuemap");
   if (us) us.oninput = (e) => { state.uniformQuery = e.target.value; renderUniforms(); };
 }
 $("refreshBtn").onclick = () => load(true);
+refreshTabs();
+// A hidden extra tab saved as the last view → back to the spectator tabs.
+if (EXTRA_TABS.some((t) => t.view === state.activeView && !state.extraTabs.includes(t.view))) state.activeView = "standings";
 setView(state.activeView);
 
 // initial cache paint for instant load, then network
