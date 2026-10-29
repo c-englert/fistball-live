@@ -128,7 +128,9 @@
 
       // Starting five per team (filled in Arena by the referee with the coach).
       const sf = r.startingFive || {};
-      const hasSf = ["teamA", "teamB"].some((s) => sf[s] && Object.keys(sf[s]).length);
+      // Starting fives are internal (Arena only) — never shown publicly, even
+      // if an old result still carries one.
+      const hasSf = false;
       const slot = (five, pos, label) => {
         const p = five[pos];
         return `<div class="sf-slot ${p ? "" : "empty"}"><div class="sf-pos">${label}</div><div class="sf-pl">${p ? `<b>#${esc(p.nr)}</b>${esc([p.name, p.first].filter(Boolean).join(" "))}` : "—"}</div></div>`;
@@ -160,7 +162,6 @@
         ${sets.length
           ? `<p class="gt-legend">Point by point — <b class="a">${esc(nameA)}</b> · <b class="b">${esc(nameB)}</b></p>${sets.map(setCard).join("")}`
           : `<div class="gt-msg">No points yet.</div>`}
-        ${!hasSf && location.hash === "#starting5" ? `<div class="gt-msg">The starting five hasn't been filled in yet — this page updates live.</div>` : ""}
         <div class="gt-feeds">
           <div>📺 Scoreboard overlay (OBS/vMix): <a href="${esc(overlay)}">${esc(overlay)}</a></div>
           <div>🔗 Data (JSON): <a href="${esc(json)}">${esc(json)}</a></div>

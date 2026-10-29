@@ -741,7 +741,7 @@ function tickerLink(m) {
   if (!eid || !m.id) return "";
   const href = `game.html?event=${encodeURIComponent(eid)}&game=${encodeURIComponent(m.id)}`;
   if (m.status !== "Not Started") return `<a class="ticker-link" href="${href}">Point by point ›</a>`;
-  return m.hasStartingFive ? `<a class="ticker-link" href="${href}#starting5">Starting 5 ›</a>` : "";
+  return ""; // starting fives are internal (Arena only)
 }
 
 function esc(s) {
@@ -1339,7 +1339,6 @@ function fsRowToMatch(d) {
     sets, status,
     cards: Array.isArray(d.cards) ? d.cards : [],
     kitA: (d.kit && d.kit.A) || "", kitB: (d.kit && d.kit.B) || "",
-    hasStartingFive: !!d.startingFive && Object.values(d.startingFive).some((f) => f && Object.keys(f).length),
   };
 }
 
