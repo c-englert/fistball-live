@@ -569,7 +569,9 @@ function bracketNode(m) {
        <span class="bn">${esc(name)}</span>
        <span class="bsc"><span class="bs">${played ? sets : ""}</span><span class="bp">${played ? pts : ""}</span></span>
      </div>`;
+  const tag = [m.round, m.nr ? "#" + m.nr : ""].filter(Boolean).join(" · ");
   return `<div class="bmatch ${live ? "live" : ""}">
+      ${tag ? `<div class="btag">${esc(tag)}</div>` : ""}
       ${side(m.teamA, m.setsA, m.pointsA, aWin)}
       ${side(m.teamB, m.setsB, m.pointsB, bWin)}
     </div>`;
@@ -604,6 +606,24 @@ function renderKnockout(category) {
       return tree.qf.find((qf) => { const rd = String(qf.round || "").toLowerCase(); return rd && names.some((nm) => nm.includes("winner") && nm.includes(rd)); }) || null;
     });
     if (mapped.some(Boolean)) qfCol = mapped;
+  } else if (tree.qf.length && tree.sf.length) {
+    // Pairs: order the QFs by the semifinal each feeds (e.g. SF1 = QF1 × QF3,
+    // SF2 = QF2 × QF4), so the connector lines join the right games.
+    const feeds = (label, qf) => {
+      const nm = String(label || "").trim().toLowerCase();
+      const rd = String(qf.round || "").trim().toLowerCase();
+      if (rd && /^(winner|loser)\s+/.test(nm) && nm.replace(/^(winner|loser)\s+(of\s+)?/, "") === rd) return true;
+      // Already resolved: the semifinal shows the team that came from this QF.
+      return !!nm && !/^(winner|loser)\b/.test(nm) && [qf.teamA, qf.teamB].some((t) => String(t || "").trim().toLowerCase() === nm);
+    };
+    const ordered = [];
+    for (const sf of tree.sf) {
+      for (const lab of [sf.teamA, sf.teamB]) {
+        const qf = tree.qf.find((q) => !ordered.includes(q) && feeds(lab, q));
+        if (qf) ordered.push(qf);
+      }
+    }
+    if (ordered.length === tree.qf.length) qfCol = ordered;
   }
 
   // Medal-path tree
