@@ -1567,7 +1567,10 @@ function isoToMs(iso) {
   return m ? new Date(+m[1], +m[2] - 1, +m[3], 0, 0, 0).getTime() : null;
 }
 function eventStartMs() {
-  const iso = (state.eventInfo && state.eventInfo.startsAt) || (state.livePointer && state.livePointer.startsAt);
+  // Ignore event info left over from the previously selected event (it is
+  // replaced a moment after switching) — use the selected event's own date.
+  const info = state.eventInfo && (!state.livePointer || !state.eventInfo.eventId || state.eventInfo.eventId === state.livePointer.eventId) ? state.eventInfo : null;
+  const iso = (info && info.startsAt) || (state.livePointer && state.livePointer.startsAt);
   const fromInfo = isoToMs(iso);
   if (fromInfo) return fromInfo;
   const starts = state.matches.map(matchStartMs).filter((t) => t != null);
@@ -1646,7 +1649,9 @@ function updateCountdown() {
   if (!el) return;
   if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; } // reset any prior clock
   const first = eventStartMs(); // event start date if set, else earliest game
-  if (!(state.eventDriven && first && Date.now() < first)) { el.hidden = true; return; }
+  // Never count down once games have been played (e.g. a wrong start date).
+  const started = state.matches.some((m) => m.status && m.status !== "Not Started");
+  if (!(state.eventDriven && first && Date.now() < first) || started) { el.hidden = true; return; }
   const tick = () => {
     const diff = first - Date.now();
     if (diff <= 0) {
