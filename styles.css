@@ -816,3 +816,6 @@ body.embedded .update-toast { display: none !important; }
 .more-menu .mm-all { color: var(--accent); border-top: 1px solid var(--line); border-radius: 0 0 8px 8px; }
 
 .bmatch .btag { font-size: 10px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--muted); padding: 0 0 3px; }
+
+/* These blocks set their own display — make sure [hidden] still hides them. */
+.countdown[hidden], .banner[hidden], .weather-strip[hidden] { display: none; }

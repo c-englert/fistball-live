@@ -881,24 +881,44 @@ function wmoIcon(code) {
   if (c >= 95) return "⛈️";
   return "🌡️";
 }
+// The place may be a venue name ("Club Gimnástico Alemán de Llanquihue") that
+// the geocoder doesn't know — try each part of the place, then of the address
+// ("Camino Totoral s/n, Llanquihue, Los Lagos, Chile"), preferring a hit in the
+// address's country. Weather of the previous event is dropped right away.
 async function loadWeather() {
   try {
-    const place = (state.eventInfo && state.eventInfo.place) || (state.livePointer && state.livePointer.place) || "";
-    const city = String(place).split(/[·,\-–|/]/)[0].trim();
-    if (!city || state._weatherCity === city) return;
-    state._weatherCity = city;
-    const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`).then((r) => r.json());
-    const loc = g && g.results && g.results[0];
-    if (!loc) return;
+    const info = state.eventInfo || {};
+    const place = info.place || (state.livePointer && state.livePointer.place) || "";
+    const address = info.address || "";
+    const key = `${place}|${address}`;
+    if (state._weatherKey === key) return;
+    state._weatherKey = key;
+    state.weather = {};
+    state.weatherCity = "";
+    renderWeatherStrip();
+    if (!place && !address) return;
+    const parts = (t) => String(t).split(/[·,\-–|/]/).map((x) => x.trim()).filter((x) => x && !/\d|s\/n/i.test(x));
+    const addr = parts(address);
+    const country = addr.length > 1 ? addr[addr.length - 1].toLowerCase() : "";
+    const tries = [...new Set([...addr.slice(0, -1), ...parts(place), ...addr])];
+    let loc = null;
+    for (const name of tries) {
+      const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=10&language=en&format=json`).then((r) => r.json());
+      const res = (g && g.results) || [];
+      loc = (country && res.find((r) => String(r.country || "").toLowerCase() === country)) || (!country && res[0]) || null;
+      if (loc) break;
+    }
+    if (!loc || state._weatherKey !== key) return;
     const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16`).then((r) => r.json());
     const d = w && w.daily;
-    if (!d || !d.time) return;
+    if (!d || !d.time || state._weatherKey !== key) return;
     const map = {};
     d.time.forEach((iso, i) => {
       const [y, m, dd] = iso.split("-");
       map[`${dd}/${m}/${y.slice(2)}`] = { code: d.weather_code[i], tmax: Math.round(d.temperature_2m_max[i]), tmin: Math.round(d.temperature_2m_min[i]), precip: d.precipitation_probability_max ? d.precipitation_probability_max[i] : null };
     });
     state.weather = map;
+    state.weatherCity = loc.name;
     renderWeatherStrip();
     if (state.activeView === "schedule") renderSchedule();
   } catch (_) { /* weather is best-effort */ }
@@ -929,8 +949,7 @@ function renderWeatherStrip() {
   if (!el) return;
   const items = eventDays().map((d) => ({ d, w: state.weather && state.weather[d] })).filter((x) => x.w);
   if (!items.length) { el.hidden = true; el.innerHTML = ""; return; }
-  const place = (state.eventInfo && state.eventInfo.place) || "";
-  const city = String(place).split(/[·,\-–|/]/)[0].trim();
+  const city = state.weatherCity || "";
   el.hidden = false;
   el.innerHTML =
     `<div class="wx-head">Forecast${city ? ` · ${esc(city)}` : ""}</div>` +
