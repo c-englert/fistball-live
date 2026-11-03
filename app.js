@@ -73,6 +73,9 @@ const FLAGS = {
   "Argentina": "🇦🇷", "Uruguay": "🇺🇾", "Uruguai": "🇺🇾", "Paraguay": "🇵🇾", "Paraguai": "🇵🇾",
   "Colombia": "🇨🇴", "Colômbia": "🇨🇴", "Peru": "🇵🇪", "Perú": "🇵🇪", "Bolivia": "🇧🇴", "Bolívia": "🇧🇴",
   "Ecuador": "🇪🇨", "Equador": "🇪🇨", "Venezuela": "🇻🇪",
+  // North & Central America
+  "USA": "🇺🇸", "U.S.A.": "🇺🇸", "United States": "🇺🇸", "United States of America": "🇺🇸", "Estados Unidos": "🇺🇸", "EUA": "🇺🇸",
+  "Canada": "🇨🇦", "Canadá": "🇨🇦", "Mexico": "🇲🇽", "México": "🇲🇽", "Panama": "🇵🇦", "Panamá": "🇵🇦",
 };
 
 const state = {
