@@ -268,6 +268,16 @@ tr.qualified .pos { background: var(--accent); color: #fff; }
 .chip.is-active { background: var(--bg-elev-2); color: var(--text); border-color: var(--accent); }
 
 .day-group { margin-bottom: 22px; }
+.day-past { margin-bottom: 10px; }
+.day-past > summary {
+  list-style: none; cursor: pointer; position: static;
+  background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 14px; margin: 0 0 10px;
+}
+.day-past > summary::-webkit-details-marker { display: none; }
+.day-past > summary::before { content: "▸ "; }
+.day-past[open] > summary::before { content: "▾ "; }
+.day-past .day-done { font-weight: 600; text-transform: none; letter-spacing: 0; }
 .day-head {
   font-size: 12px;
   font-weight: 700;
@@ -819,3 +829,10 @@ body.embedded .update-toast { display: none !important; }
 
 /* These blocks set their own display — make sure [hidden] still hides them. */
 .countdown[hidden], .banner[hidden], .weather-strip[hidden] { display: none; }
+
+/* Referees tab */
+.ref-round { margin-bottom: 14px; }
+.ref-round-head { font-size: 13px; font-weight: 800; margin: 4px 2px 6px; }
+.ref-now { color: var(--live); font-size: 11px; font-weight: 700; text-transform: uppercase; margin-left: 6px; }
+.ref-names { margin-top: 4px; font-size: 13.5px; }
+.ref-names .muted { color: var(--muted); font-weight: 500; }

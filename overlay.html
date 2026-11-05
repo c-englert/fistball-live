@@ -36,6 +36,8 @@
     .name { flex: 1; font-size: 28px; font-weight: 800; padding: 8px 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 420px; }
     .hist { display: flex; align-items: center; gap: 10px; padding: 0 10px; font-size: 20px; color: var(--muted); }
     .hist .w { color: var(--text); font-weight: 700; }
+    /* fixed-width set columns so both rows line up whatever the digits */
+    .hist span { width: 28px; text-align: center; }
     .sets { width: 52px; display: grid; place-items: center; font-size: 30px; font-weight: 900; background: var(--sets); color: #111; }
     .pts { width: 64px; display: grid; place-items: center; font-size: 34px; font-weight: 900; }
     .row.win .name::after { content: " ◀"; color: var(--sets); font-size: 20px; }

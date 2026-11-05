@@ -790,6 +790,7 @@ function setView(view) {
   $("tabCards").classList.toggle("is-active", view === "cards");
   $("tabUniforms").classList.toggle("is-active", view === "uniforms");
   $("tabTraining").classList.toggle("is-active", view === "training");
+  $("tabReferees").classList.toggle("is-active", view === "referees");
   $("tabVenueMap").classList.toggle("is-active", view === "venuemap");
   $("standingsView").hidden = view !== "standings";
   $("bracketView").hidden = view !== "bracket";
@@ -798,6 +799,7 @@ function setView(view) {
   $("cardsView").hidden = view !== "cards";
   $("uniformsView").hidden = view !== "uniforms";
   $("trainingView").hidden = view !== "training";
+  $("refereesView").hidden = view !== "referees";
   $("venueMapView").hidden = view !== "venuemap";
   const activeTab = document.querySelector(".view-tab.is-active");
   if (activeTab && activeTab.scrollIntoView) activeTab.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -810,6 +812,7 @@ function renderActiveView() {
   if (state.activeView === "cards") return renderCards();       // tournament-wide
   if (state.activeView === "uniforms") return renderUniforms(); // tournament-wide
   if (state.activeView === "training") return renderTraining(); // tournament-wide
+  if (state.activeView === "referees") return renderReferees(); // tournament-wide
   if (state.activeView === "venuemap") return renderVenueMap(); // tournament-wide
   if (state.activeView === "schedule") return renderSchedule(); // tournament-wide, by time
   if (!state.activeCategory) return;
@@ -858,15 +861,32 @@ function renderSchedule() {
     groups[idx.get(key)].items.push(m);
   }
 
+  // Days already played (every game finished) fold into one tap-to-open line,
+  // so the schedule opens on what's ahead. Not while searching.
+  const searching = !!(state.scheduleQuery || "").trim();
+  if (!state.openPastDays) state.openPastDays = new Set();
   host.innerHTML = groups.map((g) => {
     const w = state.weather[g.day];
     const wx = w ? ` <span class="day-wx">${wmoIcon(w.code)} ${w.tmin}°–${w.tmax}°${w.precip != null ? ` · 💧${w.precip}%` : ""}</span>` : "";
+    const gameItems = g.items.filter((it) => !it.isBlock);
+    const rows = g.items.map((it) => (it.isBlock ? blockRow(it) : scheduleRow(it))).join("");
+    if (!searching && gameItems.length && gameItems.every(isFinished)) {
+      const open = state.openPastDays.has(g.day) ? " open" : "";
+      return `
+    <details class="day-group day-past" data-day="${esc(g.day)}"${open}>
+      <summary class="day-head">${esc(dayLabelLong(g.day))} <span class="day-done">· ${gameItems.length} game${gameItems.length === 1 ? "" : "s"} played</span></summary>
+      ${rows}
+    </details>`;
+    }
     return `
     <div class="day-group">
       <div class="day-head">${esc(dayLabelLong(g.day))}${wx}</div>
-      ${g.items.map((it) => (it.isBlock ? blockRow(it) : scheduleRow(it))).join("")}
+      ${rows}
     </div>`;
   }).join("");
+  host.querySelectorAll("details.day-past").forEach((d) => d.addEventListener("toggle", () => {
+    if (d.open) state.openPastDays.add(d.dataset.day); else state.openPastDays.delete(d.dataset.day);
+  }));
 }
 
 // Weather (Open-Meteo, free/keyless). Geocodes the event place, then shows a
@@ -1048,6 +1068,66 @@ function renderUniforms() {
         </div>`;
       }).join("")}
     </div>`).join("");
+}
+
+/* ---------------------- Referees ---------------------- */
+// Who referees each game — so teams know when and where their referee is
+// needed. Only the round being played and the ones still to come: a round
+// (day + time) drops off once all its games are finished.
+const hasReferees = () => state.matches.some((m) => m.ref1 || m.ref2);
+function refreshRefereesTab() {
+  const on = hasReferees();
+  $("tabReferees").hidden = !on && state.activeView !== "referees";
+}
+function renderReferees() {
+  const host = $("referees");
+  const q = (state.refereeQuery || "").trim().toLowerCase();
+  const all = state.matches.filter((m) => m.teamA && m.teamB)
+    .sort((a, b) => (matchStartMs(a) || 0) - (matchStartMs(b) || 0) || String(a.court).localeCompare(String(b.court), undefined, { numeric: true }) || num(a.nr) - num(b.nr));
+  const rounds = [];
+  const idx = new Map();
+  for (const m of all) {
+    const key = `${m.day}|${m.time}`;
+    if (!idx.has(key)) { idx.set(key, rounds.length); rounds.push({ day: m.day, time: m.time, items: [] }); }
+    rounds[idx.get(key)].items.push(m);
+  }
+  const open = rounds.filter((r) => r.items.some((m) => !isFinished(m)));
+  const ahead = open.map((r) => ({
+    ...r,
+    items: r.items.filter((m) => !q || [m.teamA, m.teamB, m.ref1, m.ref2, m.category].some((x) => String(x || "").toLowerCase().includes(q)) || String(m.nr).includes(q.replace(/^#/, ""))),
+  })).filter((r) => r.items.length);
+  if (!ahead.length) {
+    host.innerHTML = `<div class="empty">${q ? "Nothing for “" + esc(state.refereeQuery.trim()) + "”." : !open.length ? "All games have been played." : "No referees assigned yet."}</div>`;
+    return;
+  }
+  let lastDay = null;
+  host.innerHTML = ahead.map((r) => {
+    const dayHead = r.day !== lastDay ? `<div class="day-head">${esc(dayLabelLong(r.day))}</div>` : "";
+    lastDay = r.day;
+    const now = r.items.some(isLive);
+    return `${dayHead}
+    <div class="ref-round">
+      <div class="ref-round-head">${esc(r.time || "")}${now ? ` <span class="ref-now">● now</span>` : ""}</div>
+      ${r.items.map((m) => {
+        const col = categoryColor(m.category);
+        const refs = [m.ref1, m.ref2].filter(Boolean);
+        return `
+        <div class="sch-row ref-row ${isLive(m) ? "live" : ""}" style="border-left-color:${col}">
+          <div class="sch-when"><span class="sch-time">#${esc(m.nr)}</span>${m.court ? `<span class="sch-court">${esc(m.court)}</span>` : ""}</div>
+          <div class="sch-mid">
+            <div class="sch-cat" style="color:${col}"><span class="sch-dot" style="background:${col}"></span>${esc(m.category)} · ${esc(m.round)}${m.bestOf ? ` · Best of ${esc(m.bestOf)}` : ""}</div>
+            <div class="sch-teams">
+              <span class="sch-team"><span class="flag">${flagFor(m.teamA)}</span>${esc(teamLabel(m.teamA, m.teamAShort))}</span>
+              <span class="sch-vs">vs</span>
+              <span class="sch-team"><span class="flag">${flagFor(m.teamB)}</span>${esc(teamLabel(m.teamB, m.teamBShort))}</span>
+            </div>
+            <div class="ref-names">🧑‍⚖️ ${refs.length ? refs.map((n, k) => `<b>${esc(n)}</b>${refs.length > 1 ? ` <span class="muted">(R${k + 1})</span>` : ""}`).join(" · ") : `<span class="muted">to be confirmed</span>`}</div>
+          </div>
+          ${isFinished(m) || isLive(m) ? `<span class="status ${statusClass(m.status)}">${esc(m.status)}</span>` : ""}
+        </div>`;
+      }).join("")}
+    </div>`;
+  }).join("");
 }
 
 /* ---------------------- Training & venue map ---------------------- */
@@ -1525,6 +1605,7 @@ function fsRowToMatch(d) {
     sets, status,
     cards: Array.isArray(d.cards) ? d.cards : [],
     kitA: (d.kit && d.kit.A) || "", kitB: (d.kit && d.kit.B) || "",
+    ref1: String((d.referees && d.referees.r1) || "").trim(), ref2: String((d.referees && d.referees.r2) || "").trim(),
   };
 }
 
@@ -1624,6 +1705,7 @@ function remerge() {
   // In event mode we render even with no games yet (countdown / empty state).
   if (!state.eventDriven && !matches.length) return;
   state.matches = matches;
+  refreshRefereesTab();
 
   // Event set but no fixture yet → clear the views and show only the countdown.
   if (!matches.length) {
@@ -1815,6 +1897,11 @@ $("tabSchedule").onclick = () => setView("schedule");
 $("tabCards").onclick = () => setView("cards");
 $("tabUniforms").onclick = () => setView("uniforms");
 $("tabTraining").onclick = () => setView("training");
+$("tabReferees").onclick = () => setView("referees");
+{
+  const rs = $("refereeSearch");
+  if (rs) rs.oninput = (e) => { state.refereeQuery = e.target.value; renderReferees(); };
+}
 $("tabVenueMap").onclick = () => setView("venuemap");
 {
   const us = $("uniformSearch");
