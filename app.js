@@ -833,6 +833,16 @@ function scheduleMatchesQuery(m) {
     || String(m.label || "").toLowerCase().includes(q);
 }
 
+// "dd/mm/yy" (or ISO) day strictly before today's local date.
+function isPastDay(day) {
+  const s = String(day || "");
+  let y, m, d;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) [y, m, d] = s.slice(0, 10).split("-").map(Number);
+  else { [d, m, y] = s.split("/").map(Number); if (y < 100) y += 2000; }
+  if (!y || !m || !d) return false;
+  const t = new Date();
+  return y * 10000 + m * 100 + d < t.getFullYear() * 10000 + (t.getMonth() + 1) * 100 + t.getDate();
+}
 function renderSchedule() {
   const host = $("schedule");
   const games = state.matches.filter((m) => m.teamA && m.teamB && scheduleMatchesQuery(m));
@@ -861,7 +871,8 @@ function renderSchedule() {
     groups[idx.get(key)].items.push(m);
   }
 
-  // Days already played (every game finished) fold into one tap-to-open line,
+  // Days already played (before today, or every game finished) fold into one
+  // tap-to-open line — a game left "Not Started" doesn't keep yesterday open,
   // so the schedule opens on what's ahead. Not while searching.
   const searching = !!(state.scheduleQuery || "").trim();
   if (!state.openPastDays) state.openPastDays = new Set();
@@ -870,11 +881,11 @@ function renderSchedule() {
     const wx = w ? ` <span class="day-wx">${wmoIcon(w.code)} ${w.tmin}°–${w.tmax}°${w.precip != null ? ` · 💧${w.precip}%` : ""}</span>` : "";
     const gameItems = g.items.filter((it) => !it.isBlock);
     const rows = g.items.map((it) => (it.isBlock ? blockRow(it) : scheduleRow(it))).join("");
-    if (!searching && gameItems.length && gameItems.every(isFinished)) {
+    if (!searching && gameItems.length && (isPastDay(g.day) || gameItems.every(isFinished))) {
       const open = state.openPastDays.has(g.day) ? " open" : "";
       return `
     <details class="day-group day-past" data-day="${esc(g.day)}"${open}>
-      <summary class="day-head">${esc(dayLabelLong(g.day))} <span class="day-done">· ${gameItems.length} game${gameItems.length === 1 ? "" : "s"} played</span></summary>
+      <summary class="day-head">${esc(dayLabelLong(g.day))} <span class="day-done">· ${gameItems.length} game${gameItems.length === 1 ? "" : "s"}${gameItems.every(isFinished) ? " played" : ""}</span></summary>
       ${rows}
     </details>`;
     }
