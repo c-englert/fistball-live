@@ -32,8 +32,9 @@
       <div class="header-actions">
         <span id="liveDot" class="live-dot" title="Live"></span>
         <span id="updated" class="updated">—</span>
-        <button id="refreshBtn" class="icon-btn" title="Refresh" aria-label="Refresh">⟳</button>
-        <button id="installBtn" class="install-btn" hidden>Install</button>
+        <select id="langSel" class="lang-sel"></select>
+        <button id="refreshBtn" class="icon-btn" title="Refresh" aria-label="Refresh" data-i18n-title="Refresh" data-i18n-aria="Refresh">⟳</button>
+        <button id="installBtn" class="install-btn" hidden data-i18n="Install">Install</button>
       </div>
     </div>
   </header>
@@ -46,17 +47,17 @@
 
   <main class="content">
     <div class="view-tabs" role="tablist">
-      <button id="tabStandings" class="view-tab is-active" role="tab">Standings</button>
-      <button id="tabBracket" class="view-tab" role="tab">Bracket</button>
-      <button id="tabMatches" class="view-tab" role="tab">Matches</button>
-      <button id="tabSchedule" class="view-tab" role="tab">Schedule</button>
-      <button id="tabReferees" class="view-tab" role="tab" hidden>Referees</button>
-      <button id="tabRanking" class="view-tab" role="tab" hidden>Ranking</button>
-      <button id="tabCards" class="view-tab" role="tab" hidden>Cards</button>
-      <button id="tabUniforms" class="view-tab" role="tab" hidden>Uniforms</button>
-      <button id="tabTraining" class="view-tab" role="tab" hidden>Training</button>
-      <button id="tabVenueMap" class="view-tab" role="tab" hidden>Venue Map</button>
-      <button id="tabMore" class="view-tab tab-more" aria-label="More tabs" hidden>+</button>
+      <button id="tabStandings" class="view-tab is-active" role="tab" data-i18n="Standings">Standings</button>
+      <button id="tabBracket" class="view-tab" role="tab" data-i18n="Bracket">Bracket</button>
+      <button id="tabMatches" class="view-tab" role="tab" data-i18n="Matches">Matches</button>
+      <button id="tabSchedule" class="view-tab" role="tab" data-i18n="Schedule">Schedule</button>
+      <button id="tabReferees" class="view-tab" role="tab" hidden data-i18n="Referees">Referees</button>
+      <button id="tabRanking" class="view-tab" role="tab" hidden data-i18n="Ranking">Ranking</button>
+      <button id="tabCards" class="view-tab" role="tab" hidden data-i18n="Cards">Cards</button>
+      <button id="tabUniforms" class="view-tab" role="tab" hidden data-i18n="Uniforms">Uniforms</button>
+      <button id="tabTraining" class="view-tab" role="tab" hidden data-i18n="Training">Training</button>
+      <button id="tabVenueMap" class="view-tab" role="tab" hidden data-i18n="Venue Map">Venue Map</button>
+      <button id="tabMore" class="view-tab tab-more" aria-label="More tabs" data-i18n-aria="More tabs" hidden>+</button>
     </div>
 
     <section id="banner" class="banner" hidden></section>
@@ -82,12 +83,12 @@
     </section>
 
     <section id="uniformsView" class="view" hidden>
-      <div class="sch-search-bar"><input id="uniformSearch" class="game-search" type="search" placeholder="Search your team…" aria-label="Search team" /></div>
+      <div class="sch-search-bar"><input id="uniformSearch" class="game-search" type="search" placeholder="Search your team…" aria-label="Search team" data-i18n-ph="Search your team…" data-i18n-aria="Search team" /></div>
       <div id="uniforms"></div>
     </section>
 
     <section id="refereesView" class="view" hidden>
-      <div class="sch-search-bar"><input id="refereeSearch" class="game-search" type="search" placeholder="Search team or referee…" aria-label="Search team or referee" /></div>
+      <div class="sch-search-bar"><input id="refereeSearch" class="game-search" type="search" placeholder="Search team or referee…" aria-label="Search team or referee" data-i18n-ph="Search team or referee…" data-i18n-aria="Search team or referee" /></div>
       <div id="referees"></div>
     </section>
 
@@ -104,15 +105,15 @@
     </section>
 
     <section id="scheduleView" class="view" hidden>
-      <div class="sch-search-bar"><input id="scheduleSearch" class="game-search" type="search" placeholder="Search by game # or team…" aria-label="Search games" /></div>
+      <div class="sch-search-bar"><input id="scheduleSearch" class="game-search" type="search" placeholder="Search by game # or team…" aria-label="Search games" data-i18n-ph="Search by game # or team…" data-i18n-aria="Search games" /></div>
       <div id="schedule"></div>
     </section>
 
-    <div id="loading" class="loading">Loading results…</div>
+    <div id="loading" class="loading" data-i18n="Loading results…">Loading results…</div>
   </main>
 
   <footer class="app-footer">
-    <p>Data updates live from the official scoring sheet. Standings are computed from completed group-stage matches.</p>
+    <p data-i18n="Data updates live from the official scoring sheet. Standings are computed from completed group-stage matches.">Data updates live from the official scoring sheet. Standings are computed from completed group-stage matches.</p>
   </footer>
 
   <!-- Invite to install the PWA -->
@@ -120,20 +121,21 @@
     <div id="installBackdrop" class="install-backdrop"></div>
     <div class="install-card" role="dialog" aria-modal="true" aria-labelledby="installTitle">
       <div class="install-logo"><img src="assets/ifa-mark-white.png" alt="" /></div>
-      <h2 id="installTitle">Welcome to Fistball Live</h2>
+      <h2 id="installTitle" data-i18n="Welcome to Fistball Live">Welcome to Fistball Live</h2>
       <p id="installMsg" class="install-msg">Install the app for one-tap access to live scores, standings, bracket and cards.</p>
-      <button id="installGo" class="install-primary">Install App</button>
-      <button id="installLater" class="install-ghost">Maybe later</button>
+      <button id="installGo" class="install-primary" data-i18n="Install App">Install App</button>
+      <button id="installLater" class="install-ghost" data-i18n="Maybe later">Maybe later</button>
     </div>
   </div>
 
   <!-- New-version toast -->
   <div id="updateToast" class="update-toast" role="status" hidden>
-    <span>New version available</span>
-    <button id="updateBtn" class="update-go">Update</button>
+    <span data-i18n="New version available">New version available</span>
+    <button id="updateBtn" class="update-go" data-i18n="Update">Update</button>
   </div>
 
 
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 
   <!-- Live scoreboard from Fistball Arena (Firestore, public read).

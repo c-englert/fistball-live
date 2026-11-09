@@ -363,6 +363,8 @@ function computeStandings(category, group = null) {
 /* ---------------------- Rendering ---------------------- */
 
 const $ = (id) => document.getElementById(id);
+const { tRound, tSlot, tStatus } = window.I18N;
+const loc = () => window.I18N.locale();
 
 function renderCategories() {
   const wrap = $("categoryPills");
@@ -400,8 +402,8 @@ function standingsBlock(category, group, title) {
   let html = `<p class="section-title">${esc(category)} · ${esc(title)}</p>`;
   html += `<div class="table-wrap"><table class="standings">
     <thead><tr>
-      <th>#</th><th class="team">Team</th><th>M</th><th>W</th>${showDraws ? "<th>D</th>" : ""}<th>L</th>
-      <th>Sets</th><th>±</th><th>Pts</th>
+      <th>#</th><th class="team">${t("Team")}</th><th>${t("M")}</th><th>${t("W")}</th>${showDraws ? `<th>${t("D")}</th>` : ""}<th>${t("L")}</th>
+      <th>${t("Sets")}</th><th>±</th><th>${t("Pts")}</th>
     </tr></thead><tbody>`;
   rows.forEach((r, i) => {
     const setDiff = r.setsWon - r.setsLost;
@@ -420,7 +422,7 @@ function standingsBlock(category, group, title) {
   });
   html += `</tbody></table></div>`;
   if (!anyPlayed) {
-    html += `<div class="empty">No matches completed yet — standings will fill in as results come in.</div>`;
+    html += `<div class="empty">${t("No matches completed yet — standings will fill in as results come in.")}</div>`;
   }
   html += renderCrossTable(category, group);
   return html;
@@ -434,16 +436,16 @@ function renderStandings() {
   let html = "";
 
   if (named.length) {
-    html = named.map((g) => standingsBlock(category, g, `Group ${g}`)).join("");
+    html = named.map((g) => standingsBlock(category, g, t("Group {g}", { g }))).join("");
   } else {
-    html = standingsBlock(category, null, isPlacement ? "Places 7–9 ranking" : "Group standings");
+    html = standingsBlock(category, null, t(isPlacement ? "Places 7–9 ranking" : "Group standings"));
   }
 
   if (!html) {
     const ko = knockoutMatches(category).length > 0;
     html = ko
-      ? `<div class="empty">This category is a knock-out stage — no group table.<br>See the <b>Bracket</b> tab.</div>`
-      : `<div class="empty">No data for this category yet — check the <b>Matches</b> tab.</div>`;
+      ? `<div class="empty">${t("This category is a knock-out stage — no group table.<br>See the <b>Bracket</b> tab.")}</div>`
+      : `<div class="empty">${t("No data for this category yet — check the <b>Matches</b> tab.")}</div>`;
   }
 
   host.innerHTML = html;
@@ -491,10 +493,10 @@ function renderCrossTable(category, group = null) {
   const mode = state.crossMode === "points" ? "points" : "sets";
 
   let html = `<div class="cross-bar">
-      <p class="section-title">Head-to-head · ${mode === "points" ? "points" : "sets"}</p>
+      <p class="section-title">${t("Head-to-head")} · ${t(mode === "points" ? "points" : "sets")}</p>
       <div class="cross-toggle">
-        <button class="chip ${mode === "sets" ? "is-active" : ""}" data-mode="sets">Sets</button>
-        <button class="chip ${mode === "points" ? "is-active" : ""}" data-mode="points">Points</button>
+        <button class="chip ${mode === "sets" ? "is-active" : ""}" data-mode="sets">${t("Sets")}</button>
+        <button class="chip ${mode === "points" ? "is-active" : ""}" data-mode="points">${t("Points")}</button>
       </div>
     </div>`;
 
@@ -521,7 +523,7 @@ function renderCrossTable(category, group = null) {
           if (!isFinished(m)) {
             // game still in progress — show as live, not a final win/loss
             cls = "live";
-            dot = `<span class="cell-dot" title="Live"></span>`;
+            dot = `<span class="cell-dot" title="${t("Live")}"></span>`;
           } else {
             cls = rs > os ? "win" : os > rs ? "loss" : "np";
           }
@@ -545,19 +547,19 @@ function knockoutMatches(category) {
 // Classify a knockout round into a tree stage (medal path) or a list stage.
 function knockoutStage(round) {
   const r = round.toLowerCase();
-  if (r.includes("4tr final") || r.includes("quarter")) return { group: "tree", key: "qf", title: "Quarterfinals" };
-  if (r.includes("semi") || r.includes("halbfinale")) return { group: "tree", key: "sf", title: "Semifinals" };
-  if (r.includes("bronze")) return { group: "tree", key: "bronze", title: "Bronze" };
-  if (r.includes("gold medal") || r.includes("gold medal match")) return { group: "tree", key: "final", title: "Final" };
-  if (r.includes("hoffnung")) return { group: "list", title: "Repechage", order: 1 };
-  if (r.includes("intermediate")) return { group: "list", title: "Intermediate round", order: 2 };
+  if (r.includes("4tr final") || r.includes("quarter")) return { group: "tree", key: "qf", title: t("Quarterfinals") };
+  if (r.includes("semi") || r.includes("halbfinale")) return { group: "tree", key: "sf", title: t("Semifinals") };
+  if (r.includes("bronze")) return { group: "tree", key: "bronze", title: t("Bronze") };
+  if (r.includes("gold medal") || r.includes("gold medal match")) return { group: "tree", key: "final", title: t("Final") };
+  if (r.includes("hoffnung")) return { group: "list", title: t("Repechage"), order: 1 };
+  if (r.includes("intermediate")) return { group: "list", title: t("Intermediate round"), order: 2 };
   // Placement ranges: derive the label from the actual round (e.g. "Placement
   // 7-8" → "Places 7–8", "7-9" → "Places 7–9") instead of assuming 7–9.
   const range = r.match(/(?:placement|places?|p)\s*(\d+)\s*[-–]\s*(\d+)/);
-  if (range) return { group: "list", title: `Places ${range[1]}–${range[2]}`, order: 3 + Number(range[1]) / 100 };
+  if (range) return { group: "list", title: t("Places {a}–{b}", { a: range[1], b: range[2] }), order: 3 + Number(range[1]) / 100 };
   const single = r.match(/placement\s*(\d+)\b/);
-  if (single) return { group: "list", title: `${single[1]}th place`, order: 3 + Number(single[1]) / 100 };
-  return { group: "list", title: round, order: 5 };
+  if (single) return { group: "list", title: t("Place {n}", { n: single[1] }), order: 3 + Number(single[1]) / 100 };
+  return { group: "list", title: tRound(round), order: 5 };
 }
 
 // Compact bracket node (keeps the sheet's slot labels, e.g. "Winner SF1").
@@ -569,10 +571,10 @@ function bracketNode(m) {
   const live = isLive(m);
   const side = (name, sets, pts, win) =>
     `<div class="bteam ${win ? "win" : ""}">
-       <span class="bn">${esc(name)}</span>
+       <span class="bn">${esc(tSlot(name))}</span>
        <span class="bsc"><span class="bs">${played ? sets : ""}</span><span class="bp">${played ? pts : ""}</span></span>
      </div>`;
-  const tag = [m.round, m.nr ? "#" + m.nr : ""].filter(Boolean).join(" · ");
+  const tag = [tRound(m.round), m.nr ? "#" + m.nr : ""].filter(Boolean).join(" · ");
   return `<div class="bmatch ${live ? "live" : ""}">
       ${tag ? `<div class="btag">${esc(tag)}</div>` : ""}
       ${side(m.teamA, m.setsA, m.pointsA, aWin)}
@@ -631,9 +633,9 @@ function renderKnockout(category) {
 
   // Medal-path tree
   const cols = [];
-  if (tree.qf.length) cols.push(["Quarterfinals", qfCol]);
-  if (tree.sf.length) cols.push(["Semifinals", tree.sf]);
-  if (tree.final.length || tree.bronze.length) cols.push(["Final", tree.final, tree.bronze]);
+  if (tree.qf.length) cols.push([t("Quarterfinals"), qfCol]);
+  if (tree.sf.length) cols.push([t("Semifinals"), tree.sf]);
+  if (tree.final.length || tree.bronze.length) cols.push([t("Final"), tree.final, tree.bronze]);
   if (cols.length) {
     html += `<div class="bracket ${flat ? "bracket--flat" : ""}">`;
     for (const [title, items, bronze] of cols) {
@@ -641,9 +643,9 @@ function renderKnockout(category) {
         // Final column: final centred (level with the SF midpoint), bronze just below.
         // An invisible clone of the bronze block above the final keeps it symmetric
         // (so the final stays centred) while everything stays in normal flow — no overflow.
-        const goldLabel = `<div class="bround-title gold-title">Gold</div>`;
+        const goldLabel = `<div class="bround-title gold-title">${t("Gold")}</div>`;
         const bronzeInner = bronze.length
-          ? `<div class="bround-title bronze-title">Bronze</div>${bronze.map(bracketNode).join("")}`
+          ? `<div class="bround-title bronze-title">${t("Bronze")}</div>${bronze.map(bracketNode).join("")}`
           : "";
         // Stack is symmetric about the final match so it stays centred:
         // [invisible bronze][Gold + final][Bronze + bronze][invisible Gold]
@@ -674,7 +676,7 @@ function renderKnockout(category) {
 function renderMatchFilter() {
   const host = $("matchFilter");
   const filters = [
-    ["all", "All"], ["live", "Live"], ["finished", "Finished"], ["upcoming", "Upcoming"],
+    ["all", t("All")], ["live", t("Live")], ["finished", t("Finished")], ["upcoming", t("Upcoming")],
   ];
   host.innerHTML = filters.map(([k, label]) =>
     `<button class="chip ${state.matchFilter === k ? "is-active" : ""}" data-f="${k}">${label}</button>`
@@ -699,7 +701,7 @@ function renderMatches() {
   const list = state.matches
     .filter((m) => m.category === state.activeCategory && matchPassesFilter(m));
   if (!list.length) {
-    host.innerHTML = `<div class="empty">No matches to show for this filter.</div>`;
+    host.innerHTML = `<div class="empty">${t("No matches to show for this filter.")}</div>`;
     return;
   }
 
@@ -714,7 +716,7 @@ function renderMatches() {
 
   host.innerHTML = groups.map((g) => `
     <div class="day-group">
-      <div class="day-head">${esc(g.day)}</div>
+      <div class="day-head">${esc(dayLabelLong(g.day))}</div>
       ${g.items.map(matchCard).join("")}
     </div>`).join("");
 }
@@ -724,7 +726,7 @@ function matchCard(m) {
   const bWin = isFinished(m) && m.setsB > m.setsA;
   const live = isLive(m);
   const showSets = (m.setsA + m.setsB > 0) || m.sets.length > 0 || !!m.cur;
-  const curPts = (v) => (m.cur ? `<div class="cur-pts" title="Current set">${v}</div>` : "");
+  const curPts = (v) => (m.cur ? `<div class="cur-pts" title="${t("Current set")}">${v}</div>` : "");
 
   const setBadges = m.sets.length
     ? `<div class="setline"><div class="set-scores">${m.sets.map(([a, b]) =>
@@ -737,11 +739,11 @@ function matchCard(m) {
     <div class="match-top">
       <div class="match-meta">
         <span>${esc(m.time)}</span>
-        ${m.court ? `<span class="tag">Court ${esc(m.court)}</span>` : ""}
+        ${m.court ? `<span class="tag">${t("Court {c}", { c: esc(m.court) })}</span>` : ""}
         <span class="tag">#${m.nr}</span>
-        <span class="tag">${esc(m.round)}</span>
+        <span class="tag">${esc(tRound(m.round))}</span>
       </div>
-      <span class="status ${statusClass(m.status)}">${esc(m.status)}</span>
+      <span class="status ${statusClass(m.status)}">${esc(tStatus(m.status))}</span>
     </div>
     <div class="match-row ${aWin ? "winner" : ""}">
       <div class="side"><span class="flag">${flagFor(m.teamA)}</span><span class="name">${esc(teamLabel(m.teamA, m.teamAShort))}</span></div>
@@ -763,7 +765,7 @@ function tickerLink(m) {
   const eid = state.livePointer && state.livePointer.eventId;
   if (!eid || !m.id) return "";
   const href = `game.html?event=${encodeURIComponent(eid)}&game=${encodeURIComponent(m.id)}`;
-  if (m.status !== "Not Started") return `<a class="ticker-link" href="${href}">Point by point ›</a>`;
+  if (m.status !== "Not Started") return `<a class="ticker-link" href="${href}">${t("Point by point ›")}</a>`;
   return ""; // starting fives are internal (Arena only)
 }
 
@@ -857,7 +859,7 @@ function renderSchedule() {
   const all = [...games, ...blocks];
   if (!all.length) {
     const q = (state.scheduleQuery || "").trim();
-    host.innerHTML = `<div class="empty">${q ? "No matches for “" + esc(q) + "”." : "No matches scheduled yet."}</div>`;
+    host.innerHTML = `<div class="empty">${q ? t("No matches for “{q}”.", { q: esc(q) }) : t("No matches scheduled yet.")}</div>`;
     return;
   }
   const sorted = [...all].sort((a, b) =>
@@ -888,7 +890,7 @@ function renderSchedule() {
       const open = state.openPastDays.has(g.day) ? " open" : "";
       return `
     <details class="day-group day-past" data-day="${esc(g.day)}"${open}>
-      <summary class="day-head">${esc(dayLabelLong(g.day))} <span class="day-done">· ${gameItems.length} game${gameItems.length === 1 ? "" : "s"}${gameItems.every(isFinished) ? " played" : ""}</span></summary>
+      <summary class="day-head">${esc(dayLabelLong(g.day))} <span class="day-done">· ${gameItems.length === 1 ? t("1 game") : t("{n} games", { n: gameItems.length })}${gameItems.every(isFinished) ? " " + t("played") : ""}</span></summary>
       ${rows}
     </details>`;
     }
@@ -978,7 +980,7 @@ function eventDays() {
 }
 function weekdayShort(day) {
   const [d, m, y] = String(day).split("/").map(Number);
-  return new Date(2000 + y, m - 1, d).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
+  return new Date(2000 + y, m - 1, d).toLocaleDateString(loc(), { weekday: "short", day: "numeric", month: "short" });
 }
 // Compact forecast strip for the event location, shown under the header.
 function renderWeatherStrip() {
@@ -989,7 +991,7 @@ function renderWeatherStrip() {
   const city = state.weatherCity || "";
   el.hidden = false;
   el.innerHTML =
-    `<div class="wx-head">Forecast${city ? ` · ${esc(city)}` : ""}</div>` +
+    `<div class="wx-head">${t("Forecast")}${city ? ` · ${esc(city)}` : ""}</div>` +
     `<div class="wx-days">` +
     items.map((x) =>
       `<div class="wx-day"><span class="wx-wd">${esc(weekdayShort(x.d))}</span>` +
@@ -1004,7 +1006,7 @@ function blockRow(b) {
   return `
   <div class="sch-row sch-block">
     <div class="sch-when"><span class="sch-time">${esc(b.time || "")}</span>${b.court ? `<span class="sch-court">${esc(b.court)}</span>` : ""}</div>
-    <div class="sch-mid"><div class="sch-block-label">🏆 ${esc(b.label || "Ceremony")}</div></div>
+    <div class="sch-mid"><div class="sch-block-label">🏆 ${esc(b.label || t("Ceremony"))}</div></div>
   </div>`;
 }
 
@@ -1012,7 +1014,7 @@ function dayLabelLong(day) {
   const [d, m, y] = String(day).split("/").map(Number);
   if (!d) return day;
   const dt = new Date(2000 + (y || 0), (m || 1) - 1, d);
-  return dt.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
+  return dt.toLocaleDateString(loc(), { weekday: "short", day: "numeric", month: "short" });
 }
 
 // A stable, distinct colour per category (so men/women rows with identical team
@@ -1047,7 +1049,7 @@ function kitTeam(m, side) {
   const raw = side === "A" ? m.teamARaw : m.teamBRaw;
   const kit = resolveKit(side === "A" ? m.kitA : m.kitB, raw, m.category);
   const name = side === "A" ? teamLabel(m.teamA, m.teamAShort) : teamLabel(m.teamB, m.teamBShort);
-  return `<span class="uni-team">${kitSwatch(kit)}<span class="flag">${flagFor(side === "A" ? m.teamA : m.teamB)}</span>${esc(name)}${kit && kit.n ? `<span class="uni-n">Uniform ${kit.n}</span>` : ""}</span>`;
+  return `<span class="uni-team">${kitSwatch(kit)}<span class="flag">${flagFor(side === "A" ? m.teamA : m.teamB)}</span>${esc(name)}${kit && kit.n ? `<span class="uni-n">${t("Uniform {n}", { n: kit.n })}</span>` : ""}</span>`;
 }
 function renderUniforms() {
   const host = $("uniforms");
@@ -1057,7 +1059,7 @@ function renderUniforms() {
     .filter((m) => !q || String(m.teamA).toLowerCase().includes(q) || String(m.teamB).toLowerCase().includes(q) || String(m.nr).includes(q.replace(/^#/, "")))
     .sort((a, b) => (matchStartMs(a) || 0) - (matchStartMs(b) || 0) || String(a.court).localeCompare(String(b.court), undefined, { numeric: true }) || num(a.nr) - num(b.nr));
   if (!games.length) {
-    host.innerHTML = `<div class="empty">${q ? "No uniforms for “" + esc(state.uniformQuery.trim()) + "”." : "Uniforms haven't been assigned yet."}</div>`;
+    host.innerHTML = `<div class="empty">${q ? t("No uniforms for “{q}”.", { q: esc(state.uniformQuery.trim()) }) : t("Uniforms haven't been assigned yet.")}</div>`;
     return;
   }
   const groups = [];
@@ -1076,7 +1078,7 @@ function renderUniforms() {
         <div class="sch-row uni-row" style="border-left-color:${col}">
           <div class="sch-when"><span class="sch-time">${esc(m.time || "")}</span>${m.court ? `<span class="sch-court">${esc(m.court)}</span>` : ""}</div>
           <div class="sch-mid">
-            <div class="sch-cat" style="color:${col}"><span class="sch-dot" style="background:${col}"></span>#${esc(m.nr)} · ${esc(m.category)} · ${esc(m.round)}</div>
+            <div class="sch-cat" style="color:${col}"><span class="sch-dot" style="background:${col}"></span>#${esc(m.nr)} · ${esc(m.category)} · ${esc(tRound(m.round))}</div>
             <div class="uni-teams">${kitTeam(m, "A")}${kitTeam(m, "B")}</div>
           </div>
         </div>`;
@@ -1111,7 +1113,7 @@ function renderReferees() {
     items: r.items.filter((m) => !q || [m.teamA, m.teamB, m.ref1, m.ref2, m.category].some((x) => String(x || "").toLowerCase().includes(q)) || String(m.nr).includes(q.replace(/^#/, ""))),
   })).filter((r) => r.items.length);
   if (!ahead.length) {
-    host.innerHTML = `<div class="empty">${q ? "Nothing for “" + esc(state.refereeQuery.trim()) + "”." : !open.length ? "All games have been played." : "No referees assigned yet."}</div>`;
+    host.innerHTML = `<div class="empty">${q ? t("Nothing for “{q}”.", { q: esc(state.refereeQuery.trim()) }) : t(!open.length ? "All games have been played." : "No referees assigned yet.")}</div>`;
     return;
   }
   let lastDay = null;
@@ -1121,7 +1123,7 @@ function renderReferees() {
     const now = r.items.some(isLive);
     return `${dayHead}
     <div class="ref-round">
-      <div class="ref-round-head">${esc(r.time || "")}${now ? ` <span class="ref-now">● now</span>` : ""}</div>
+      <div class="ref-round-head">${esc(r.time || "")}${now ? ` <span class="ref-now">● ${t("now")}</span>` : ""}</div>
       ${r.items.map((m) => {
         const col = categoryColor(m.category);
         const refs = [m.ref1, m.ref2].filter(Boolean);
@@ -1129,15 +1131,15 @@ function renderReferees() {
         <div class="sch-row ref-row ${isLive(m) ? "live" : ""}" style="border-left-color:${col}">
           <div class="sch-when"><span class="sch-time">#${esc(m.nr)}</span>${m.court ? `<span class="sch-court">${esc(m.court)}</span>` : ""}</div>
           <div class="sch-mid">
-            <div class="sch-cat" style="color:${col}"><span class="sch-dot" style="background:${col}"></span>${esc(m.category)} · ${esc(m.round)}${m.bestOf ? ` · Best of ${esc(m.bestOf)}` : ""}</div>
+            <div class="sch-cat" style="color:${col}"><span class="sch-dot" style="background:${col}"></span>${esc(m.category)} · ${esc(tRound(m.round))}${m.bestOf ? ` · ${t("Best of {n}", { n: esc(m.bestOf) })}` : ""}</div>
             <div class="sch-teams">
               <span class="sch-team"><span class="flag">${flagFor(m.teamA)}</span>${esc(teamLabel(m.teamA, m.teamAShort))}</span>
-              <span class="sch-vs">vs</span>
+              <span class="sch-vs">${t("vs")}</span>
               <span class="sch-team"><span class="flag">${flagFor(m.teamB)}</span>${esc(teamLabel(m.teamB, m.teamBShort))}</span>
             </div>
-            <div class="ref-names">🧑‍⚖️ ${refs.length ? refs.map((n, k) => `<b>${esc(n)}</b>${refs.length > 1 ? ` <span class="muted">(R${k + 1})</span>` : ""}`).join(" · ") : `<span class="muted">to be confirmed</span>`}</div>
+            <div class="ref-names">🧑‍⚖️ ${refs.length ? refs.map((n, k) => `<b>${esc(n)}</b>${refs.length > 1 ? ` <span class="muted">(R${k + 1})</span>` : ""}`).join(" · ") : `<span class="muted">${t("to be confirmed")}</span>`}</div>
           </div>
-          ${isFinished(m) || isLive(m) ? `<span class="status ${statusClass(m.status)}">${esc(m.status)}</span>` : ""}
+          ${isFinished(m) || isLive(m) ? `<span class="status ${statusClass(m.status)}">${esc(tStatus(m.status))}</span>` : ""}
         </div>`;
       }).join("")}
     </div>`;
@@ -1198,13 +1200,13 @@ const MEDAL = { 1: "🥇", 2: "🥈", 3: "🥉" };
 function renderRanking() {
   const host = $("ranking");
   const cats = state.categories.map((c) => [c, finalRanking(c)]).filter(([, r]) => r && r.decided);
-  if (!cats.length) { host.innerHTML = `<div class="empty">The final ranking appears here once a category's final has been played.</div>`; return; }
-  const title = { women: "Women", men: "Men", other: "Other" };
+  if (!cats.length) { host.innerHTML = `<div class="empty">${t("The final ranking appears here once a category's final has been played.")}</div>`; return; }
+  const title = { women: t("Women"), men: t("Men"), other: t("Other") };
   host.innerHTML = ["women", "men", "other"].map((gen) => {
     const list = cats.filter(([c]) => genderOf(c) === gen);
     if (!list.length) return "";
     return `<div class="day-head">${title[gen]}</div>` + list.map(([c, r]) => `
-      <p class="section-title">${esc(c)} · Final ranking${r.complete ? "" : ` <span class="muted">(provisional)</span>`}</p>
+      <p class="section-title">${esc(c)} · ${t("Final ranking")}${r.complete ? "" : ` <span class="muted">(${t("provisional")})</span>`}</p>
       <div class="table-wrap"><table class="standings ranking">
         <tbody>${r.rows.map((x) => `<tr class="${x.pos <= 3 ? "podium" : ""}">
           <td><span class="pos">${MEDAL[x.pos] || x.pos}</span></td>
@@ -1221,18 +1223,18 @@ state.training = [];
 state.venueMap = null;
 function trainingDayLabel(iso) {
   const d = new Date(iso + "T12:00:00");
-  return isNaN(d) ? iso : d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+  return isNaN(d) ? iso : d.toLocaleDateString(loc(), { weekday: "long", day: "numeric", month: "long" });
 }
 function renderTraining() {
   const host = $("training");
   const slots = [...state.training].sort((a, b) => `${a.date} ${a.start} ${a.place}`.localeCompare(`${b.date} ${b.start} ${b.place}`, undefined, { numeric: true }));
-  if (!slots.length) { host.innerHTML = `<div class="empty">No training times published yet.</div>`; return; }
+  if (!slots.length) { host.innerHTML = `<div class="empty">${t("No training times published yet.")}</div>`; return; }
   const days = [];
   for (const s of slots) {
     if (!days.length || days[days.length - 1].date !== s.date) days.push({ date: s.date, items: [] });
     days[days.length - 1].items.push(s);
   }
-  host.innerHTML = `<p class="tr-hint">Tap <b>Book</b> on a free time and enter your team name.</p>` + days.map((g) => `
+  host.innerHTML = `<p class="tr-hint">${t("Tap <b>Book</b> on a free time and enter your team name.")}</p>` + days.map((g) => `
     <div class="day-group">
       <div class="day-head">${esc(trainingDayLabel(g.date))}</div>
       ${g.items.map((s) => `
@@ -1240,8 +1242,8 @@ function renderTraining() {
           <div class="sch-when"><span class="sch-time">${esc(s.start)}–${esc(s.end)}</span>${s.place ? `<span class="sch-court">${esc(s.place)}</span>` : ""}</div>
           <div class="sch-mid">${s.team
             ? `<span class="tr-team"><span class="flag">${flagFor(s.team)}</span>${esc(s.team)}</span>`
-            : `<span class="tr-free">Free</span>`}</div>
-          ${s.team ? "" : `<button class="tr-book" data-slot="${esc(s.id)}">Book</button>`}
+            : `<span class="tr-free">${t("Free")}</span>`}</div>
+          ${s.team ? "" : `<button class="tr-book" data-slot="${esc(s.id)}">${t("Book")}</button>`}
         </div>`).join("")}
     </div>`).join("");
   host.querySelectorAll(".tr-book").forEach((b) => (b.onclick = () => bookSlot(b.dataset.slot)));
@@ -1249,19 +1251,19 @@ function renderTraining() {
 async function bookSlot(id) {
   const s = state.training.find((x) => x.id === id);
   if (!s || !window.bookTraining) return;
-  const team = (window.prompt(`Book ${s.start}–${s.end}${s.place ? " · " + s.place : ""} (${trainingDayLabel(s.date)})\n\nTeam name:`, localStorage.getItem("fb_training_team") || "") || "").trim().slice(0, 60);
+  const team = (window.prompt(`${t("Book {slot}", { slot: `${s.start}–${s.end}${s.place ? " · " + s.place : ""} (${trainingDayLabel(s.date)})` })}\n\n${t("Team name:")}`, localStorage.getItem("fb_training_team") || "") || "").trim().slice(0, 60);
   if (!team) return;
   try {
     await window.bookTraining(id, team);
     localStorage.setItem("fb_training_team", team);
   } catch (e) {
-    alert("Sorry — this time was just booked by another team. Please pick another one.");
+    alert(t("Sorry — this time was just booked by another team. Please pick another one."));
   }
 }
 function renderVenueMap() {
   const host = $("venueMap");
   const m = state.venueMap;
-  if (!m || !m.data) { host.innerHTML = `<div class="empty">No venue map published yet.</div>`; return; }
+  if (!m || !m.data) { host.innerHTML = `<div class="empty">${t("No venue map published yet.")}</div>`; return; }
   if (m.kind === "pdf") {
     if (!state.venueMapUrl) {
       try {
@@ -1271,18 +1273,18 @@ function renderVenueMap() {
         state.venueMapUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
       } catch (_) { state.venueMapUrl = ""; }
     }
-    host.innerHTML = `<a class="vm-open" href="${state.venueMapUrl}" target="_blank" rel="noopener">Open venue map (PDF) ↗</a>
-      <iframe class="vm-pdf" src="${state.venueMapUrl}" title="Venue map"></iframe>`;
+    host.innerHTML = `<a class="vm-open" href="${state.venueMapUrl}" target="_blank" rel="noopener">${t("Open venue map (PDF) ↗")}</a>
+      <iframe class="vm-pdf" src="${state.venueMapUrl}" title="${t("Venue map")}"></iframe>`;
     return;
   }
-  host.innerHTML = `<a href="${m.data}" target="_blank" rel="noopener" class="vm-img-link"><img class="vm-img" src="${m.data}" alt="Venue map" /></a>
-    <p class="tr-hint">Tap the map to open it full size and zoom.</p>`;
+  host.innerHTML = `<a href="${m.data}" target="_blank" rel="noopener" class="vm-img-link"><img class="vm-img" src="${m.data}" alt="${t("Venue map")}" /></a>
+    <p class="tr-hint">${t("Tap the map to open it full size and zoom.")}</p>`;
   // Data-URL links are blocked as top-level navigation in some browsers — open a blob instead.
   const a = host.querySelector(".vm-img-link");
   a.onclick = (e) => {
     e.preventDefault();
     const w = window.open();
-    if (w) { w.document.title = "Venue map"; w.document.body.style.margin = "0"; w.document.body.innerHTML = `<img src="${m.data}" style="width:100%;height:auto;display:block">`; }
+    if (w) { w.document.title = t("Venue map"); w.document.body.style.margin = "0"; w.document.body.innerHTML = `<img src="${m.data}" style="width:100%;height:auto;display:block">`; }
   };
 }
 /* ---------------------- Extra tabs (+ / −) ---------------------- */
@@ -1304,7 +1306,7 @@ function refreshTabs() {
   const more = $("tabMore");
   more.hidden = !avail.length;
   more.textContent = hiddenOnes.length ? "+" : "−";
-  more.title = hiddenOnes.length ? "Show more tabs" : "Hide the extra tabs";
+  more.title = t(hiddenOnes.length ? "Show more tabs" : "Hide the extra tabs");
 }
 function closeMoreMenu() { const m = $("moreMenu"); if (m) m.remove(); }
 function enableExtra(view) {
@@ -1327,8 +1329,8 @@ $("tabMore").onclick = (e) => {
   menu.className = "more-menu";
   menu.style.top = `${r.bottom + 6}px`;
   menu.style.right = `${Math.max(8, window.innerWidth - r.right)}px`;
-  menu.innerHTML = hiddenOnes.map((t) => `<button data-view="${t.view}">+ ${esc(t.label)}</button>`).join("")
-    + (hiddenOnes.length > 1 ? `<button data-view="*" class="mm-all">Show all</button>` : "");
+  menu.innerHTML = hiddenOnes.map((x) => `<button data-view="${x.view}">+ ${esc(t(x.label))}</button>`).join("")
+    + (hiddenOnes.length > 1 ? `<button data-view="*" class="mm-all">${t("Show all")}</button>` : "");
   menu.onclick = (ev) => {
     const v = ev.target.dataset && ev.target.dataset.view;
     if (!v) return;
@@ -1369,12 +1371,12 @@ function renderVenue() {
   el.innerHTML = `
     <span class="venue-addr">📍 ${esc(address)}</span>
     <span class="venue-links">
-      <a class="venue-btn" href="${maps("driving")}" target="_blank" rel="noopener">🚗 By car</a>
-      <a class="venue-btn" href="${maps("transit")}" target="_blank" rel="noopener">🚌 Public transport</a>
+      <a class="venue-btn" href="${maps("driving")}" target="_blank" rel="noopener">🚗 ${t("By car")}</a>
+      <a class="venue-btn" href="${maps("transit")}" target="_blank" rel="noopener">🚌 ${t("Public transport")}</a>
     </span>`;
 }
 
-function teamLabel(name, short) { return (short && String(short).trim()) ? String(short).trim() : name; }
+function teamLabel(name, short) { return (short && String(short).trim()) ? String(short).trim() : isPlaceholderTeam(name) ? tSlot(name) : name; }
 
 function scheduleRow(m) {
   const aWin = isFinished(m) && m.setsA > m.setsB;
@@ -1385,14 +1387,14 @@ function scheduleRow(m) {
   <div class="sch-row ${isLive(m) ? "live" : ""}" style="border-left-color:${col}">
     <div class="sch-when"><span class="sch-time">${esc(m.time || "")}</span>${m.court ? `<span class="sch-court">${esc(m.court)}</span>` : ""}</div>
     <div class="sch-mid">
-      <div class="sch-cat" style="color:${col}"><span class="sch-dot" style="background:${col}"></span>${esc(m.category)} · ${esc(m.round)}</div>
+      <div class="sch-cat" style="color:${col}"><span class="sch-dot" style="background:${col}"></span>${esc(m.category)} · ${esc(tRound(m.round))}</div>
       <div class="sch-teams">
         <span class="sch-team ${aWin ? "win" : ""}"><span class="flag">${flagFor(m.teamA)}</span>${esc(teamLabel(m.teamA, m.teamAShort))}</span>
-        <span class="sch-vs">${score || "vs"}</span>
+        <span class="sch-vs">${score || t("vs")}</span>
         <span class="sch-team ${bWin ? "win" : ""}"><span class="flag">${flagFor(m.teamB)}</span>${esc(teamLabel(m.teamB, m.teamBShort))}</span>
       </div>
     </div>
-    <span class="status ${statusClass(m.status)}">${esc(m.status)}</span>
+    <span class="status ${statusClass(m.status)}">${esc(tStatus(m.status))}</span>
   </div>`;
 }
 
@@ -1400,7 +1402,7 @@ function renderBracket() {
   const host = $("bracket");
   const html = renderKnockout(state.activeCategory);
   host.innerHTML = html ||
-    `<div class="empty">No knockout stage for this category.<br>Check <b>Standings</b> or <b>Matches</b>.</div>`;
+    `<div class="empty">${t("No knockout stage for this category.<br>Check <b>Standings</b> or <b>Matches</b>.")}</div>`;
 }
 
 /* ---------------------- Cards (cautions) ---------------------- */
@@ -1499,11 +1501,11 @@ function renderCards() {
   const host = $("cards");
   const players = state.cautions || [];
   if (!players.length) {
-    host.innerHTML = `<div class="empty">No cautions recorded yet — cards will appear here as referees log them.</div>`;
+    host.innerHTML = `<div class="empty">${t("No cautions recorded yet — cards will appear here as referees log them.")}</div>`;
     return;
   }
   // Group only by gender (Women / Men), then by team within each.
-  const GENDER_LABEL = { women: "Women", men: "Men", other: "Other" };
+  const GENDER_LABEL = { women: t("Women"), men: t("Men"), other: t("Other") };
   const byGender = new Map();
   for (const p of players) {
     const g = genderOf(p.category);
@@ -1524,7 +1526,7 @@ function renderCards() {
       html += `<div class="card-team"><div class="card-team-head"><span class="flag">${flagFor(name)}</span>${esc(name)}</div>`;
       for (const p of ps) {
         const games = p.events.length
-          ? `<div class="cp-games dim">${p.events.map((e) => `${e.type}${e.game ? " · game " + esc(e.game) : ""}`).join(" &nbsp;·&nbsp; ")}</div>`
+          ? `<div class="cp-games dim">${p.events.map((e) => `${e.type}${e.game ? " · " + t("game {n}", { n: esc(e.game) }) : ""}`).join(" &nbsp;·&nbsp; ")}</div>`
           : "";
         html += `<div class="card-player">
           <span class="cp-name">${esc(((p.first ? p.first + " " : "") + p.name).trim() || "—")} ${p.nr ? `<span class="dim">#${esc(p.nr)}</span>` : ""}${games}</span>
@@ -1645,7 +1647,7 @@ async function load(showSpin) {
     if (!state.rules) state.rules = DEFAULT_RULES;
     const cached = localStorage.getItem("fb_cache");
     if (cached && !state.matches.length) applyData(cached);
-    showBanner("Couldn't reach the live sheet — showing the last data loaded. Pull to refresh when back online.");
+    showBanner(t("Couldn't reach the live sheet — showing the last data loaded. Pull to refresh when back online."));
   } finally {
     btn.classList.remove("spin");
   }
@@ -1720,7 +1722,7 @@ window.renderEventSwitcher = function (events, currentId) {
   const list = events || [];
   el.hidden = list.length < 2;
   el.innerHTML = list.length < 2 ? "" : list.map((e) =>
-    `<button class="event-pill ${e.eventId === currentId ? "is-active" : ""}" data-eid="${esc(e.eventId)}">${esc(e.name || "Event")}${e.dates ? `<span class="event-pill-sub">${esc(e.dates)}</span>` : ""}</button>`).join("");
+    `<button class="event-pill ${e.eventId === currentId ? "is-active" : ""}" data-eid="${esc(e.eventId)}">${esc(e.name || t("Event"))}${e.dates ? `<span class="event-pill-sub">${esc(e.dates)}</span>` : ""}</button>`).join("");
   el.querySelectorAll(".event-pill").forEach((b) => { b.onclick = () => window.selectLiveEvent && window.selectLiveEvent(b.dataset.eid); });
 };
 
@@ -1797,7 +1799,7 @@ function remerge() {
     renderCategories();
     ["standings", "bracket", "matches", "cards"].forEach((id) => { const e = $(id); if (e) e.innerHTML = ""; });
     $("loading").hidden = true;
-    $("updated").textContent = "Not started";
+    $("updated").textContent = t("Not started");
     updateCountdown();
     return;
   }
@@ -1817,7 +1819,7 @@ function remerge() {
   }
 
   state.lastUpdated = new Date();
-  $("updated").textContent = "Updated " + state.lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  $("updated").textContent = t("Updated {time}", { time: state.lastUpdated.toLocaleTimeString(loc(), { hour: "2-digit", minute: "2-digit" }) });
   $("loading").hidden = true;
 
   renderCategories();
@@ -1851,7 +1853,7 @@ function updateCountdown() {
     }
     const s = Math.floor(diff / 1000);
     const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-    el.innerHTML = `<span class="cd-label">Event starts in</span>` +
+    el.innerHTML = `<span class="cd-label">${t("Event starts in")}</span>` +
       `<span class="cd-clock">${d}d ${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(sec).padStart(2, "0")}s</span>`;
   };
   el.hidden = false;
@@ -1883,10 +1885,10 @@ function showInstallModal(mode) { // mode: "prompt" | "ios"
   const go = $("installGo"), msg = $("installMsg");
   if (mode === "ios") {
     go.hidden = true;
-    msg.innerHTML = 'Tap the <b>Share</b> button, then <b>“Add to Home Screen”</b> to install.';
+    msg.innerHTML = t("Tap the <b>Share</b> button, then <b>“Add to Home Screen”</b> to install.");
   } else {
     go.hidden = false;
-    msg.textContent = "Install the app for one-tap access to live scores, standings, bracket and cards.";
+    msg.textContent = t("Install the app for one-tap access to live scores, standings, bracket and cards.");
   }
   m.hidden = false;
 }
@@ -1994,6 +1996,14 @@ $("tabVenueMap").onclick = () => setView("venuemap");
   if (us) us.oninput = (e) => { state.uniformQuery = e.target.value; renderUniforms(); };
 }
 $("refreshBtn").onclick = () => load(true);
+window.I18N.applyStatic();
+window.I18N.mountPicker($("langSel"), () => {
+  refreshTabs();
+  if (state.lastUpdated) $("updated").textContent = t("Updated {time}", { time: state.lastUpdated.toLocaleTimeString(loc(), { hour: "2-digit", minute: "2-digit" }) });
+  renderCategories();
+  renderActiveView();
+  updateCountdown();
+});
 refreshTabs();
 // A hidden extra tab saved as the last view → back to the spectator tabs.
 if (EXTRA_TABS.some((t) => t.view === state.activeView && !state.extraTabs.includes(t.view))) state.activeView = "standings";

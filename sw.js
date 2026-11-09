@@ -1,10 +1,11 @@
 /* Service worker: app-shell cache + network-first data. */
-const VERSION = "fb-live-v81";
+const VERSION = "fb-live-v82";
 const SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./i18n.js",
   "./manifest.webmanifest",
   "./assets/ifa-mark.png",
   "./assets/ifa-mark-white.png",

@@ -61,8 +61,9 @@
 <body>
   <main class="gt">
     <a id="back" class="gt-back" href="./">‹ Fistball Live</a>
-    <div id="root"><div class="gt-msg">Loading…</div></div>
+    <div id="root"><div class="gt-msg" data-i18n="Loading…">Loading…</div></div>
   </main>
+  <script src="i18n.js"></script>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -82,6 +83,8 @@
     const q = new URLSearchParams(location.search);
     const eid = q.get("event"), gid = q.get("game");
     const root = document.getElementById("root");
+    const { t, tRound, tStatus } = window.I18N;
+    window.I18N.applyStatic();
     document.getElementById("back").href = eid ? `./?event=${encodeURIComponent(eid)}` : "./";
 
     const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -97,17 +100,17 @@
         const el = document.getElementById("starting5");
         if (el) { el.scrollIntoView(); scrolled = true; }
       });
-      if (!r) { root.innerHTML = `<div class="gt-msg">Game not found.</div>`; return; }
+      if (!r) { root.innerHTML = `<div class="gt-msg">${t("Game not found.")}</div>`; return; }
       const sets = (r.sets || []).map((s) => ({ a: num(s.a), b: num(s.b), seq: String(s.seq || "") }));
       const finished = r.status === "Finished";
       const live = r.status === "In progress" || r.status === "Starting";
       // liveSets* (newer Arena) count only completed sets; setsA/B also count the set being played.
       const hasLive = !finished && r.liveSetsA != null;
       const sA = num(hasLive ? r.liveSetsA : r.setsA), sB = num(hasLive ? r.liveSetsB : r.setsB);
-      const nameA = r.teamAShort || r.teamA || "Team A", nameB = r.teamBShort || r.teamB || "Team B";
+      const nameA = r.teamAShort || r.teamA || t("Team A"), nameB = r.teamBShort || r.teamB || t("Team B");
       document.title = `${nameA} – ${nameB} · Fistball Live`;
       const cur = live && num(r.liveSet) && r.livePointsA != null
-        ? `Set ${num(r.liveSet)} · ${num(r.livePointsA)}:${num(r.livePointsB)}` : "";
+        ? `${t("Set {n}", { n: num(r.liveSet) })} · ${num(r.livePointsA)}:${num(r.livePointsB)}` : "";
 
       const setCard = (s, i) => {
         let a = 0, b = 0;
@@ -117,7 +120,7 @@
         }).join("");
         const tot = Math.max(s.a + s.b, 1);
         return `<div class="gt-set">
-          <div class="gt-set-h"><span>${i + 1}. Set</span><span class="sc">${s.a}:${s.b}</span></div>
+          <div class="gt-set-h"><span>${t("{n}. Set", { n: i + 1 })}</span><span class="sc">${s.a}:${s.b}</span></div>
           <div class="gt-bar"><i style="width:${(100 * s.a) / tot}%"></i><i class="b" style="width:${(100 * s.b) / tot}%"></i></div>
           ${chips ? `<div class="gt-pts">${chips}</div>` : ""}
         </div>`;
@@ -149,31 +152,31 @@
       root.innerHTML = `
         ${eventName ? `<div class="gt-event">${esc(eventName)}</div>` : ""}
         <div class="gt-chips">
-          ${[r.date, r.time, r.court ? `Court ${r.court}` : "", r.nr ? `Game ${r.nr}` : "", r.category, r.round, r.bestOf ? `Best of ${r.bestOf}` : ""]
+          ${[r.date, r.time, r.court ? t("Court {c}", { c: r.court }) : "", r.nr ? t("Game {n}", { n: r.nr }) : "", r.category, tRound(r.round), r.bestOf ? t("Best of {n}", { n: r.bestOf }) : ""]
             .filter(Boolean).map((x) => `<span class="gt-chip">${esc(x)}</span>`).join("")}
-          <span class="gt-chip ${live ? "live" : ""}">${esc(r.status || "Not Started")}</span>
+          <span class="gt-chip ${live ? "live" : ""}">${esc(tStatus(r.status || "Not Started"))}</span>
         </div>
         <div class="gt-score">
-          <div class="gt-team ${finished && sA > sB ? "win" : ""}">${logoImg(r.teamA)}<span class="lbl">Team A</span>${esc(nameA)}</div>
-          <div class="gt-sets"><small>SETS</small>${sA} : ${sB}${cur ? `<span class="cur">${esc(cur)}</span>` : ""}</div>
-          <div class="gt-team b ${finished && sB > sA ? "win" : ""}">${logoImg(r.teamB)}<span class="lbl">Team B</span>${esc(nameB)}</div>
+          <div class="gt-team ${finished && sA > sB ? "win" : ""}">${logoImg(r.teamA)}<span class="lbl">${t("Team A")}</span>${esc(nameA)}</div>
+          <div class="gt-sets"><small>${t("SETS")}</small>${sA} : ${sB}${cur ? `<span class="cur">${esc(cur)}</span>` : ""}</div>
+          <div class="gt-team b ${finished && sB > sA ? "win" : ""}">${logoImg(r.teamB)}<span class="lbl">${t("Team B")}</span>${esc(nameB)}</div>
         </div>
         ${startingFive}
         ${sets.length
-          ? `<p class="gt-legend">Point by point — <b class="a">${esc(nameA)}</b> · <b class="b">${esc(nameB)}</b></p>${sets.map(setCard).join("")}`
-          : `<div class="gt-msg">No points yet.</div>`}
+          ? `<p class="gt-legend">${t("Point by point")} — <b class="a">${esc(nameA)}</b> · <b class="b">${esc(nameB)}</b></p>${sets.map(setCard).join("")}`
+          : `<div class="gt-msg">${t("No points yet.")}</div>`}
         <div class="gt-feeds">
-          <div>📺 Scoreboard overlay (OBS/vMix): <a href="${esc(overlay)}">${esc(overlay)}</a></div>
-          <div>🔗 Data (JSON): <a href="${esc(json)}">${esc(json)}</a></div>
+          <div>📺 ${t("Scoreboard overlay (OBS/vMix):")} <a href="${esc(overlay)}">${esc(overlay)}</a></div>
+          <div>🔗 ${t("Data (JSON):")} <a href="${esc(json)}">${esc(json)}</a></div>
         </div>`;
     }
 
     if (!eid || !gid) {
-      root.innerHTML = `<div class="gt-msg">Open a game from Fistball Live.</div>`;
+      root.innerHTML = `<div class="gt-msg">${t("Open a game from Fistball Live.")}</div>`;
     } else {
       onSnapshot(doc(db, "events", eid, "results", gid),
         (d) => render(d.exists() ? d.data() : null),
-        (e) => { console.warn("result unavailable:", e); root.innerHTML = `<div class="gt-msg">Game unavailable.</div>`; });
+        (e) => { console.warn("result unavailable:", e); root.innerHTML = `<div class="gt-msg">${t("Game unavailable.")}</div>`; });
       onSnapshot(doc(db, "public", "teamlogos_" + eid),
         (d) => { logos = d.exists() ? d.data().logos || {} : {}; if (last) render(last); },
         (e) => console.warn("team logos unavailable:", e));
