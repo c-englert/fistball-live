@@ -836,3 +836,9 @@ body.embedded .update-toast { display: none !important; }
 .ref-now { color: var(--live); font-size: 11px; font-weight: 700; text-transform: uppercase; margin-left: 6px; }
 .ref-names { margin-top: 4px; font-size: 13.5px; }
 .ref-names .muted { color: var(--muted); font-weight: 500; }
+
+/* Final ranking tab */
+.standings.ranking td:first-child { width: 44px; }
+.standings.ranking tr.podium .team-name { font-weight: 800; }
+.standings.ranking .pos { font-size: 15px; }
+.section-title .muted { color: var(--muted); font-weight: 500; }

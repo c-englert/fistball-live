@@ -791,6 +791,7 @@ function setView(view) {
   $("tabUniforms").classList.toggle("is-active", view === "uniforms");
   $("tabTraining").classList.toggle("is-active", view === "training");
   $("tabReferees").classList.toggle("is-active", view === "referees");
+  $("tabRanking").classList.toggle("is-active", view === "ranking");
   $("tabVenueMap").classList.toggle("is-active", view === "venuemap");
   $("standingsView").hidden = view !== "standings";
   $("bracketView").hidden = view !== "bracket";
@@ -800,6 +801,7 @@ function setView(view) {
   $("uniformsView").hidden = view !== "uniforms";
   $("trainingView").hidden = view !== "training";
   $("refereesView").hidden = view !== "referees";
+  $("rankingView").hidden = view !== "ranking";
   $("venueMapView").hidden = view !== "venuemap";
   const activeTab = document.querySelector(".view-tab.is-active");
   if (activeTab && activeTab.scrollIntoView) activeTab.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -813,6 +815,7 @@ function renderActiveView() {
   if (state.activeView === "uniforms") return renderUniforms(); // tournament-wide
   if (state.activeView === "training") return renderTraining(); // tournament-wide
   if (state.activeView === "referees") return renderReferees(); // tournament-wide
+  if (state.activeView === "ranking") return renderRanking();   // tournament-wide
   if (state.activeView === "venuemap") return renderVenueMap(); // tournament-wide
   if (state.activeView === "schedule") return renderSchedule(); // tournament-wide, by time
   if (!state.activeCategory) return;
@@ -1138,6 +1141,76 @@ function renderReferees() {
         </div>`;
       }).join("")}
     </div>`;
+  }).join("");
+}
+
+/* ---------------------- Final ranking ---------------------- */
+// Final classification per category. Each finished place-deciding game (gold,
+// bronze, "Placement 5-6"…) fixes its winner's and loser's places; teams out
+// earlier take the remaining places — a deeper knockout run first, then their
+// group position and record.
+function placeOfRound(round) {
+  const r = String(round || "").toLowerCase();
+  if (/semi|halbfinal|quarter|viertel|4tr|repechage|hoffnung|intermediate/.test(r)) return null;
+  if (/gold medal|^\s*finale?\s*$|platz 1\b/.test(r)) return 1;
+  if (/bronze|3rd|third|platz 3\b/.test(r)) return 3;
+  const range = r.match(/(?:placement|places?|platz|p)\s*(\d+)\s*[-–\/]\s*(\d+)/);
+  if (range) return Number(range[2]) === Number(range[1]) + 1 ? Number(range[1]) : null;
+  const single = r.match(/(?:placement|platz)\s*(\d+)\b/);
+  return single ? Number(single[1]) : null;
+}
+function finalRanking(category) {
+  const ms = state.matches.filter((m) => m.category === category);
+  const teams = new Set();
+  ms.forEach((m) => [m.teamA, m.teamB].forEach((t) => { if (isRealTeam(t)) teams.add(t); }));
+  if (!teams.size) return null;
+  const place = new Map();
+  let decided = false;
+  for (const m of ms) {
+    const p = placeOfRound(m.round);
+    if (!p || !isFinished(m) || m.setsA === m.setsB || !isRealTeam(m.teamA) || !isRealTeam(m.teamB)) continue;
+    const [w, l] = m.setsA > m.setsB ? [m.teamA, m.teamB] : [m.teamB, m.teamA];
+    place.set(w, p); place.set(l, p + 1);
+    if (p === 1) decided = true;
+  }
+  const koRun = (t) => ms.filter((m) => !TABLE_ROUNDS.includes(m.round) && isFinished(m) && (m.teamA === t || m.teamB === t)).length;
+  const grp = new Map();
+  const groups = groupsInCategory(category);
+  (groups.length ? groups : [null]).forEach((g) => (computeStandings(category, g) || []).forEach((r, i) => grp.set(r.team, { i, r })));
+  const g = (t) => grp.get(t) || { i: 99, r: { pts: 0, setsWon: 0, setsLost: 0, pointsFor: 0, pointsAgainst: 0 } };
+  const rest = [...teams].filter((t) => !place.has(t)).sort((a, b) =>
+    koRun(b) - koRun(a) || g(a).i - g(b).i || g(b).r.pts - g(a).r.pts
+    || (g(b).r.setsWon - g(b).r.setsLost) - (g(a).r.setsWon - g(a).r.setsLost)
+    || (g(b).r.pointsFor - g(b).r.pointsAgainst) - (g(a).r.pointsFor - g(a).r.pointsAgainst)
+    || a.localeCompare(b));
+  const taken = new Set(place.values());
+  let next = 1;
+  for (const t of rest) { while (taken.has(next)) next++; place.set(t, next); taken.add(next); }
+  const rows = [...place].map(([team, pos]) => ({ team, pos })).sort((a, b) => a.pos - b.pos);
+  // A never-played group game doesn't make the ranking provisional.
+  return { rows, decided, complete: ms.filter((m) => !TABLE_ROUNDS.includes(m.round)).every(isFinished) };
+}
+const hasRanking = () => state.categories.some((c) => (finalRanking(c) || {}).decided);
+function refreshRankingTab() {
+  $("tabRanking").hidden = !hasRanking() && state.activeView !== "ranking";
+}
+const MEDAL = { 1: "🥇", 2: "🥈", 3: "🥉" };
+function renderRanking() {
+  const host = $("ranking");
+  const cats = state.categories.map((c) => [c, finalRanking(c)]).filter(([, r]) => r && r.decided);
+  if (!cats.length) { host.innerHTML = `<div class="empty">The final ranking appears here once a category's final has been played.</div>`; return; }
+  const title = { women: "Women", men: "Men", other: "Other" };
+  host.innerHTML = ["women", "men", "other"].map((gen) => {
+    const list = cats.filter(([c]) => genderOf(c) === gen);
+    if (!list.length) return "";
+    return `<div class="day-head">${title[gen]}</div>` + list.map(([c, r]) => `
+      <p class="section-title">${esc(c)} · Final ranking${r.complete ? "" : ` <span class="muted">(provisional)</span>`}</p>
+      <div class="table-wrap"><table class="standings ranking">
+        <tbody>${r.rows.map((x) => `<tr class="${x.pos <= 3 ? "podium" : ""}">
+          <td><span class="pos">${MEDAL[x.pos] || x.pos}</span></td>
+          <td class="team"><span class="team-name"><span class="flag">${flagFor(x.team)}</span>${esc(x.team)}</span></td>
+        </tr>`).join("")}</tbody>
+      </table></div>`).join("");
   }).join("");
 }
 
@@ -1736,6 +1809,7 @@ function remerge() {
   // Order by the defined category order, unknowns last (alphabetical).
   cats.sort((a, b) => orderIndex(a) - orderIndex(b) || a.localeCompare(b));
   state.categories = cats;
+  refreshRankingTab();
 
   if (!state.activeCategory || !cats.includes(state.activeCategory)) {
     state.activeCategory = cats[0];
@@ -1909,6 +1983,7 @@ $("tabCards").onclick = () => setView("cards");
 $("tabUniforms").onclick = () => setView("uniforms");
 $("tabTraining").onclick = () => setView("training");
 $("tabReferees").onclick = () => setView("referees");
+$("tabRanking").onclick = () => setView("ranking");
 {
   const rs = $("refereeSearch");
   if (rs) rs.oninput = (e) => { state.refereeQuery = e.target.value; renderReferees(); };
