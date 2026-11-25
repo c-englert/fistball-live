@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>MDP · Fistball Live</title>
+  <!--
+    MDP — Map Definition Point: how the points of one game were decided,
+    head to head, per set or for the whole game. Scouted in Fistball Arena
+    (public read). For TV and commentators; updates live.
+      mdp.html?event=<eventId>&game=<gameId>[&set=1][&lang=pt]
+  -->
+  <link rel="icon" href="icons/favicon-64.png" type="image/png" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .md { max-width: 900px; margin: 0 auto; padding: 16px; }
+    .md-back { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 600; }
+    .md-event { color: var(--muted); font-size: 13px; margin: 10px 0 2px; }
+    .md-title { font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
+    .md-head { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; margin: 12px 0;
+               background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+    .md-team { font-size: clamp(18px, 3vw, 30px); font-weight: 900; color: var(--accent); }
+    .md-team.b { text-align: right; color: var(--women); }
+    .md-sets { text-align: center; font-size: clamp(30px, 5vw, 52px); font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; }
+    .md-sets small { display: block; font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .08em; margin-bottom: 4px; }
+    .md-scope { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+    .md-scope button { background: var(--bg-elev-2); color: inherit; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-weight: 700; cursor: pointer; }
+    .md-scope button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+    table.md-t { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: clamp(14px, 2vw, 20px); }
+    .md-t td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
+    .md-t .g td { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding-top: 16px; }
+    .md-t .lbl { text-align: center; width: 40%; color: var(--muted); font-weight: 600; }
+    .md-t .v { position: relative; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .md-t .v.a { text-align: right; }
+    .md-t .v b { position: relative; }
+    .md-t .v i { position: absolute; top: 5px; bottom: 5px; border-radius: 4px; opacity: .35; }
+    .md-t .v.a i { right: 0; background: var(--accent); }
+    .md-t .v.b i { left: 0; background: var(--women); }
+    .md-msg { color: var(--muted); padding: 40px 0; text-align: center; }
+    .md-foot { margin-top: 14px; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main class="md">
+    <a id="back" class="md-back" href="./">‹ Fistball Live</a>
+    <div id="root"><div class="md-msg" data-i18n="Loading…">Loading…</div></div>
+  </main>
+  <script src="i18n.js"></script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, onSnapshot }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // Same Firebase project as index.html (public read only). FORKS: keep in sync.
+    const app = initializeApp({
+      apiKey: "AIzaSyAca__YTy_Y6tlX62jJ6aK_qHhJgUD4V0w",
+      authDomain: "fistball-arena.firebaseapp.com",
+      projectId: "fistball-arena",
+      appId: "1:261226374717:web:d267cc2b02175e85bf2c54",
+    });
+    const db = getFirestore(app);
+
+    const q = new URLSearchParams(location.search);
+    const eid = q.get("event"), gid = q.get("game");
+    const root = document.getElementById("root");
+    const { t } = window.I18N;
+    window.I18N.applyStatic();
+    document.getElementById("back").href = eid ? `./?event=${encodeURIComponent(eid)}` : "./";
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const short = (n) => String(n || "").split(" - ")[0];
+
+    // ---- same logic as Fistball Arena src/mdp/mdp.js (keep in sync) ----
+    const ACTIONS = { ace: "winner", attack: "winner", serviceError: "loser", attackError: "loser", defenseError: "loser", setterError: "loser" };
+    const other = (x) => (x === "A" ? "B" : "A");
+    const responsible = (p) => (ACTIONS[p.a] === "loser" ? other(p.w) : p.w);
+    const setDone = (a, b) => (Math.max(a, b) >= 11 && Math.abs(a - b) >= 2) || Math.max(a, b) >= 15;
+    function replay(mdp) {
+      const log = mdp?.log || [], serve = mdp?.serve || {};
+      const first = (s) => serve[s] || (s % 2 ? "B" : "A");
+      const sets = [{ points: [], a: 0, b: 0 }];
+      for (const e of log) {
+        let cur = sets[sets.length - 1];
+        if (e.next) { if (cur.points.length) sets.push({ points: [], a: 0, b: 0 }); continue; }
+        if (!e.w || !ACTIONS[e.a]) continue;
+        if (cur.points.length && setDone(cur.a, cur.b)) { cur = { points: [], a: 0, b: 0 }; sets.push(cur); }
+        const prev = cur.points[cur.points.length - 1];
+        cur.points.push({ w: e.w, a: e.a, server: prev ? other(prev.w) : first(sets.length - 1) });
+        if (e.w === "A") cur.a++; else cur.b++;
+      }
+      return sets.filter((s) => s.points.length);
+    }
+    function stats(points) {
+      const pct = (x, n) => (n ? (x / n) * 100 : null);
+      const side = (T) => {
+        const O = other(T);
+        const by = (k, team) => points.filter((p) => p.a === k && responsible(p) === team).length;
+        const served = points.filter((p) => p.server === T), sw = served.filter((p) => p.w === T).length;
+        return { played: points.length, won: points.filter((p) => p.w === T).length, lost: points.filter((p) => p.w === O).length,
+          services: served.length, servicesWonPct: pct(sw, served.length), servicesLostPct: pct(served.length - sw, served.length),
+          aces: by("ace", T), serviceErrors: by("serviceError", T), attackWon: by("attack", T), attackLost: by("attack", O),
+          attackErrors: by("attackError", T), defenseErrors: by("defenseError", T), setterErrors: by("setterError", T) };
+      };
+      return { A: side("A"), B: side("B") };
+    }
+    const ROWS = [
+      ["General play", [["played", "Points played"], ["won", "Points won"], ["lost", "Points lost"]]],
+      ["Service play", [["services", "Number of services"], ["servicesWonPct", "% of services won", "%"], ["servicesLostPct", "% of services lost", "%"], ["aces", "Service winners won"], ["serviceErrors", "Service errors"]]],
+      ["Strikes play", [["attackWon", "Attack winners won"], ["attackLost", "Attack winners lost"], ["attackErrors", "Unforced attack errors"]]],
+      ["Defense and setter play", [["defenseErrors", "Defense unforced errors"], ["setterErrors", "Setter unforced errors"]]],
+    ];
+    // ---------------------------------------------------------------------
+
+    let mdp = null, result = null, eventName = "";
+    let scope = q.get("set") ? Number(q.get("set")) - 1 : "game";
+    window.mdpScope = (s) => { scope = s === "game" ? "game" : Number(s); render(); };
+
+    function render() {
+      if (!mdp) return;
+      const A = short(result?.teamAShort || result?.teamA) || "A", B = short(result?.teamBShort || result?.teamB) || "B";
+      const sets = replay(mdp);
+      if (scope !== "game" && !sets[scope]) scope = "game";
+      const pts = scope === "game" ? sets.flatMap((s) => s.points) : sets[scope].points;
+      const st = stats(pts);
+      const setsA = sets.filter((s) => s.a > s.b && setDone(s.a, s.b)).length, setsB = sets.filter((s) => s.b > s.a && setDone(s.a, s.b)).length;
+      const cur = sets[sets.length - 1];
+      const fmt = (v, u) => (v == null ? "—" : u === "%" ? `${Math.round(v)}%` : v);
+      root.innerHTML = `
+        ${eventName ? `<div class="md-event">${esc(eventName)}</div>` : ""}
+        <div class="md-title">${t("Map Definition Point (MDP)")}</div>
+        <div class="md-head">
+          <div class="md-team">${esc(A)}</div>
+          <div class="md-sets"><small>${t("SETS")}</small>${setsA} : ${setsB}${cur && !setDone(cur.a, cur.b) ? `<small style="margin-top:6px">${cur.a} : ${cur.b}</small>` : ""}</div>
+          <div class="md-team b">${esc(B)}</div>
+        </div>
+        ${!sets.length ? `<div class="md-msg">${t("No points scouted yet.")}</div>` : `
+        <div class="md-scope">
+          <button class="${scope === "game" ? "on" : ""}" onclick="mdpScope('game')">${t("Whole game")}</button>
+          ${sets.map((s, i) => `<button class="${scope === i ? "on" : ""}" onclick="mdpScope(${i})">${t("Set {n}", { n: i + 1 })} · ${s.a}:${s.b}</button>`).join("")}
+        </div>
+        <table class="md-t"><tbody>
+          ${ROWS.map(([g, rows]) => `<tr class="g"><td colspan="3">${t(g)}</td></tr>` + rows.map(([k, label, u]) => {
+            const a = st.A[k], b = st.B[k], sum = u === "%" ? 100 : (a || 0) + (b || 0);
+            const w = (v) => `${sum ? Math.round(((v || 0) / sum) * 100) : 0}%`;
+            return `<tr><td class="v a"><i style="width:${w(a)}"></i><b>${fmt(a, u)}</b></td><td class="lbl">${t(label)}</td><td class="v b"><i style="width:${w(b)}"></i><b>${fmt(b, u)}</b></td></tr>`;
+          }).join("")).join("")}
+        </tbody></table>`}
+        <div class="md-foot">${t("Errors count against the team that made them; winners for the team that scored.")}</div>`;
+    }
+
+    if (!eid || !gid) {
+      root.innerHTML = `<div class="md-msg">${t("Open a game from Fistball Live.")}</div>`;
+    } else {
+      onSnapshot(doc(db, "events", eid, "mdp", gid), (d) => { mdp = d.exists() ? d.data() : { log: [] }; render(); },
+        (e) => { console.warn("MDP unavailable:", e); root.innerHTML = `<div class="md-msg">${t("Game unavailable.")}</div>`; });
+      onSnapshot(doc(db, "events", eid, "results", gid), (d) => { result = d.exists() ? d.data() : null; render(); },
+        (e) => console.warn("result unavailable:", e));
+      onSnapshot(doc(db, "public", "event_" + eid), (b) => { eventName = b.exists() ? b.data().name || "" : ""; render(); },
+        (e) => console.warn("event info unavailable:", e));
+    }
+  </script>
+</body>
+</html>
