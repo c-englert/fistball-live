@@ -38,6 +38,16 @@
     .md-t .v.b i { left: 0; background: var(--women); }
     .md-msg { color: var(--muted); padding: 40px 0; text-align: center; }
     .md-foot { margin-top: 14px; font-size: 12px; color: var(--muted); }
+    /* TV / stream overlay (?tv=1): transparent page, one dark panel sized for 1920×1080 */
+    body.tv { background: var(--tv-bg, transparent) !important; }
+    body.tv #back, body.tv .md-event { display: none; }
+    body.tv .md { max-width: 1100px; margin: 40px auto; padding: 22px 30px; background: rgba(10, 16, 30, .92); color: #fff; border-radius: 16px; }
+    body.tv .md-head { background: transparent; border: 0; padding: 4px 0 10px; }
+    body.tv .md-title { font-size: 18px; }
+    body.tv .md-tvset { text-align: center; font-size: 20px; font-weight: 800; color: var(--gold); margin-bottom: 6px; }
+    body.tv table.md-t { font-size: 24px; }
+    body.tv .md-t td { padding: 6px 8px; border-color: rgba(255,255,255,.12); }
+    body.tv .md-t .lbl, body.tv .md-t .g td { color: rgba(255,255,255,.75); }
   </style>
 </head>
 <body>
@@ -71,7 +81,7 @@
     const short = (n) => String(n || "").split(" - ")[0];
 
     // ---- same logic as Fistball Arena src/mdp/mdp.js (keep in sync) ----
-    const ACTIONS = { ace: "winner", attack: "winner", serviceError: "loser", attackMiss: "loser", attackError: "loser", defenseError: "loser", setterError: "loser" };
+    const ACTIONS = { ace: "winner", attack: "winner", serviceError: "loser", footFault: "loser", attackMiss: "loser", attackError: "loser", defenseError: "loser", setterError: "loser" };
     const other = (x) => (x === "A" ? "B" : "A");
     const responsible = (p) => (ACTIONS[p.a] === "loser" ? other(p.w) : p.w);
     const setDone = (a, b) => (Math.max(a, b) >= 11 && Math.abs(a - b) >= 2) || Math.max(a, b) >= 15;
@@ -98,27 +108,46 @@
         const served = points.filter((p) => p.server === T), sw = served.filter((p) => p.w === T).length;
         return { played: points.length, won: points.filter((p) => p.w === T).length, lost: points.filter((p) => p.w === O).length,
           services: served.length, servicesWonPct: pct(sw, served.length), servicesLostPct: pct(served.length - sw, served.length),
-          aces: by("ace", T), serviceErrors: by("serviceError", T), attackWon: by("attack", T), attackLost: by("attackMiss", T),
+          aces: by("ace", T), serviceErrors: by("serviceError", T), footFaults: by("footFault", T), attackWon: by("attack", T), attackLost: by("attackMiss", T),
           attackErrors: by("attackError", T), defenseErrors: by("defenseError", T), setterErrors: by("setterError", T) };
       };
       return { A: side("A"), B: side("B") };
     }
     const ROWS = [
       ["General play", [["played", "Points played"], ["won", "Points won"], ["lost", "Points lost"]]],
-      ["Service play", [["services", "Number of services"], ["servicesWonPct", "% of services won", "%"], ["servicesLostPct", "% of services lost", "%"], ["aces", "Service winners won"], ["serviceErrors", "Service errors"]]],
+      ["Service play", [["services", "Number of services"], ["servicesWonPct", "% of services won", "%"], ["servicesLostPct", "% of services lost", "%"], ["aces", "Service winners won"], ["serviceErrors", "Service errors"], ["footFaults", "Foot faults"]]],
       ["Strikes play", [["attackWon", "Attack winners won"], ["attackLost", "Attack winners lost"], ["attackErrors", "Unforced attack errors"]]],
       ["Defense and setter play", [["defenseErrors", "Defense unforced errors"], ["setterErrors", "Setter unforced errors"]]],
     ];
+    const CARD_ROWS = [["yellow", "Yellow cards"], ["yellowRed", "Yellow-red cards"], ["red", "Red cards"]];
+    function cardStats(cards, teamA, teamB) {
+      const norm = (n) => String(n || "").split(" - ")[0].trim().toLowerCase();
+      const side = (name) => {
+        const list = (cards || []).filter((c) => c.team === name || norm(c.team) === norm(name));
+        const sum = (k) => list.reduce((s, c) => s + (c[k] ? 1 : 0), 0);
+        return { yellow: sum("y"), yellowRed: sum("yr"), red: sum("r") };
+      };
+      return { A: side(teamA), B: side(teamB) };
+    }
     // ---------------------------------------------------------------------
 
     let mdp = null, result = null, eventName = "";
-    let scope = q.get("set") ? Number(q.get("set")) - 1 : "game";
+    // TV / stream overlay: &tv=1 (transparent; &bg=00ff00 for chroma key).
+    // &set=last follows the last finished set (the graphic for between sets).
+    const tv = q.get("tv") === "1", follow = q.get("set") === "last";
+    if (tv) {
+      document.body.classList.add("tv");
+      const bg = (q.get("bg") || "").replace(/[^0-9a-fA-F]/g, "");
+      if (bg) document.documentElement.style.setProperty("--tv-bg", "#" + bg);
+    }
+    let scope = follow ? "game" : q.get("set") ? Number(q.get("set")) - 1 : "game";
     window.mdpScope = (s) => { scope = s === "game" ? "game" : Number(s); render(); };
 
     function render() {
       if (!mdp) return;
       const A = short(result?.teamAShort || result?.teamA) || "A", B = short(result?.teamBShort || result?.teamB) || "B";
       const sets = replay(mdp);
+      if (follow) { const done = sets.map((s, i) => (setDone(s.a, s.b) ? i : -1)).filter((i) => i >= 0); scope = done.length ? done[done.length - 1] : "game"; }
       if (scope !== "game" && !sets[scope]) scope = "game";
       const pts = scope === "game" ? sets.flatMap((s) => s.points) : sets[scope].points;
       const st = stats(pts);
@@ -134,18 +163,18 @@
           <div class="md-team b">${esc(B)}</div>
         </div>
         ${!sets.length ? `<div class="md-msg">${t("No points scouted yet.")}</div>` : `
-        <div class="md-scope">
+        ${tv ? (scope === "game" ? "" : `<div class="md-tvset">${t("After set {n}", { n: scope + 1 })} · ${sets[scope].a}:${sets[scope].b}</div>`) : `<div class="md-scope">
           <button class="${scope === "game" ? "on" : ""}" onclick="mdpScope('game')">${t("Whole game")}</button>
           ${sets.map((s, i) => `<button class="${scope === i ? "on" : ""}" onclick="mdpScope(${i})">${t("Set {n}", { n: i + 1 })} · ${s.a}:${s.b}</button>`).join("")}
-        </div>
+        </div>`}
         <table class="md-t"><tbody>
-          ${ROWS.map(([g, rows]) => `<tr class="g"><td colspan="3">${t(g)}</td></tr>` + rows.map(([k, label, u]) => {
-            const a = st.A[k], b = st.B[k], sum = u === "%" ? 100 : (a || 0) + (b || 0);
+          ${[...ROWS, ...(scope === "game" ? [["Cards (whole game)", CARD_ROWS, cardStats(result?.cards, result?.teamA, result?.teamB)]] : [])].map(([g, rows, src]) => `<tr class="g"><td colspan="3">${t(g)}</td></tr>` + rows.map(([k, label, u]) => {
+            const a = (src || st).A[k], b = (src || st).B[k], sum = u === "%" ? 100 : (a || 0) + (b || 0);
             const w = (v) => `${sum ? Math.round(((v || 0) / sum) * 100) : 0}%`;
             return `<tr><td class="v a"><i style="width:${w(a)}"></i><b>${fmt(a, u)}</b></td><td class="lbl">${t(label)}</td><td class="v b"><i style="width:${w(b)}"></i><b>${fmt(b, u)}</b></td></tr>`;
           }).join("")).join("")}
         </tbody></table>`}
-        <div class="md-foot">${t("Errors count against the team that made them; winners for the team that scored.")}</div>`;
+        ${tv ? "" : `<div class="md-foot">${t("Errors count against the team that made them; winners for the team that scored.")}</div>`}`;
     }
 
     if (!eid || !gid) {
