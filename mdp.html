@@ -115,10 +115,10 @@
       return { A: side("A"), B: side("B") };
     }
     const ROWS = [
-      ["General play", [["played", "Points played"], ["won", "Points won"], ["lost", "Points lost"]]],
-      ["Service play", [["services", "Number of services"], ["servicesWonPct", "% of services won", "%"], ["servicesLostPct", "% of services lost", "%"], ["aces", "Service winners won"], ["serviceErrors", "Service errors"], ["footFaults", "Foot faults"]]],
-      ["Strikes play", [["attackWon", "Attack winners won"], ["attackLost", "Attack winners lost"], ["attackErrors", "Unforced attack errors"]]],
-      ["Defense and setter play", [["defenseErrors", "Defense unforced errors"], ["setterErrors", "Setter unforced errors"]]],
+      ["General Match", [["played", "Points played"], ["won", "Points won"], ["lost", "Points lost"]]],
+      ["Service", [["services", "Number of services"], ["servicesWonPct", "% of services won", "%"], ["servicesLostPct", "% of services lost", "%"], ["aces", "Service winners won"], ["serviceErrors", "Service errors"], ["footFaults", "Foot faults"]]],
+      ["Strike", [["attackWon", "Attack winners won"], ["attackLost", "Attack winners lost"], ["attackErrors", "Unforced attack errors"]]],
+      ["Defense and Setter", [["defenseErrors", "Defense unforced errors"], ["setterErrors", "Setter unforced errors"]]],
     ];
     const CARD_ROWS = [["yellow", "Yellow cards"], ["yellowRed", "Yellow-red cards"], ["red", "Red cards"]];
     function cardStats(cards, teamA, teamB) {
