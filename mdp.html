@@ -71,7 +71,7 @@
     const short = (n) => String(n || "").split(" - ")[0];
 
     // ---- same logic as Fistball Arena src/mdp/mdp.js (keep in sync) ----
-    const ACTIONS = { ace: "winner", attack: "winner", serviceError: "loser", attackError: "loser", defenseError: "loser", setterError: "loser" };
+    const ACTIONS = { ace: "winner", attack: "winner", serviceError: "loser", attackMiss: "loser", attackError: "loser", defenseError: "loser", setterError: "loser" };
     const other = (x) => (x === "A" ? "B" : "A");
     const responsible = (p) => (ACTIONS[p.a] === "loser" ? other(p.w) : p.w);
     const setDone = (a, b) => (Math.max(a, b) >= 11 && Math.abs(a - b) >= 2) || Math.max(a, b) >= 15;
@@ -98,7 +98,7 @@
         const served = points.filter((p) => p.server === T), sw = served.filter((p) => p.w === T).length;
         return { played: points.length, won: points.filter((p) => p.w === T).length, lost: points.filter((p) => p.w === O).length,
           services: served.length, servicesWonPct: pct(sw, served.length), servicesLostPct: pct(served.length - sw, served.length),
-          aces: by("ace", T), serviceErrors: by("serviceError", T), attackWon: by("attack", T), attackLost: by("attack", O),
+          aces: by("ace", T), serviceErrors: by("serviceError", T), attackWon: by("attack", T), attackLost: by("attackMiss", T),
           attackErrors: by("attackError", T), defenseErrors: by("defenseError", T), setterErrors: by("setterError", T) };
       };
       return { A: side("A"), B: side("B") };
