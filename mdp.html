@@ -16,7 +16,7 @@
     .md { max-width: 900px; margin: 0 auto; padding: 16px; }
     .md-back { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 600; }
     .md-event { color: var(--muted); font-size: 13px; margin: 10px 0 2px; }
-    .md-title { font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
+    .md-title { font-size: clamp(16px, 2.2vw, 22px); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
     .md-head { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; margin: 12px 0;
                background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
     .md-team { font-size: clamp(18px, 3vw, 30px); font-weight: 900; color: var(--accent); }
@@ -28,8 +28,8 @@
     .md-scope button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
     table.md-t { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: clamp(14px, 2vw, 20px); }
     .md-t td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
-    .md-t .g td { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding-top: 16px; }
-    .md-t .lbl { text-align: center; width: 40%; color: var(--muted); font-weight: 600; }
+    .md-t .g td { font-size: clamp(16px, 2.2vw, 22px); font-weight: 900; text-transform: uppercase; letter-spacing: .06em; color: var(--gold); padding-top: 20px; border-bottom: 2px solid var(--gold); }
+    .md-t .lbl { text-align: center; width: 40%; color: var(--text); font-weight: 700; }
     .md-t .v { position: relative; font-weight: 900; font-variant-numeric: tabular-nums; }
     .md-t .v.a { text-align: right; }
     .md-t .v b { position: relative; }
@@ -43,11 +43,12 @@
     body.tv #back, body.tv .md-event { display: none; }
     body.tv .md { max-width: 1100px; margin: 40px auto; padding: 22px 30px; background: rgba(10, 16, 30, .92); color: #fff; border-radius: 16px; }
     body.tv .md-head { background: transparent; border: 0; padding: 4px 0 10px; }
-    body.tv .md-title { font-size: 18px; }
+    body.tv .md-title { font-size: 26px; }
     body.tv .md-tvset { text-align: center; font-size: 20px; font-weight: 800; color: var(--gold); margin-bottom: 6px; }
     body.tv table.md-t { font-size: 24px; }
     body.tv .md-t td { padding: 6px 8px; border-color: rgba(255,255,255,.12); }
-    body.tv .md-t .lbl, body.tv .md-t .g td { color: rgba(255,255,255,.75); }
+    body.tv .md-t .lbl { color: #fff; }
+    body.tv .md-t .g td { font-size: 26px; color: var(--gold); border-color: var(--gold); }
   </style>
 </head>
 <body>
